@@ -29,6 +29,17 @@ cache_manager = CacheManager()
 # auth_handler = Auth(auth_config)
 auth_initialized = False
 
+def _is_valid_yyyy_mm_dd(value: str) -> bool:
+    """Return True if value matches YYYY-MM-DD and is a valid date."""
+    if not isinstance(value, str) or len(value) != 10:
+        return False
+    try:
+        import datetime as _dt
+        _dt.date.fromisoformat(value)
+        return True
+    except Exception:
+        return False
+
 async def ensure_auth():
     global auth_initialized
     if not auth_initialized:
@@ -48,25 +59,34 @@ mcp = FastMCP("fhir-mcp", host="0.0.0.0", port=8052)
 # FastMCP는 함수 시그니처와 Docstring을 통해 Schema를 자동 생성합니다.
 
 @mcp.tool()
-async def find_patient(lastName: str, firstName: Optional[str] = None, birthDate: Optional[str] = None, gender: Optional[Literal["male", "female", "other", "unknown"]] = None):
+async def find_patient(last_name: str, gender: Literal["male", "female", "other", "unknown"], first_name= None, birth_date=None):
     """
     Search for a patient by demographics.
     
     Args:
-        lastName: Family name
-        firstName: Given name
-        birthDate: YYYY-MM-DD format
-        gender: Patient gender
+        lastName: Family name (required)
+        firstName: Given name (can be "")
+        birthDate: YYYY-MM-DD format (can be "")
+        gender: Patient gender (have to be among "male", "female", "other" and "unknown")
     """
     await ensure_auth()
+    # 조립 전 기본 검증 및 정제
     args = {
-        "lastName": lastName,
-        "firstName": firstName,
-        "birthDate": birthDate,
-        "gender": gender
+        "lastName": last_name or "",
+        "firstName": first_name or "",
     }
-    # None 값 제거 (TS의 args 구성 방식 따름)
-    cleaned_args = {k: v for k, v in args.items() if v is not None}
+    # birthDate는 YYYY-MM-DD 형식일 때만 포함
+    if birth_date and _is_valid_yyyy_mm_dd(birth_date):
+        args["birthDate"] = birth_date
+    
+    # gender는 허용된 값일 때만 포함
+    allowed_genders = {"male", "female", "other", "unknown"}
+    if gender and gender in allowed_genders:
+        args["gender"] = gender
+    
+    # 빈 문자열 제거
+    cleaned_args = {k: v for k, v in args.items() if v != ''}
+    
     return await fhir_client.find_patient(cleaned_args)
 
 @mcp.tool()

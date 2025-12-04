@@ -4,7 +4,7 @@ from typing import Any, List, Dict, Optional, Union
 
 # Enhanced Helper Functions
 
-def format_patient_search_results(bundle: Dict[str, Any]) -> str:
+def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> str:
     entries = bundle.get('entry', [])
     if not entries:
         return "No patients found matching search criteria"
@@ -28,6 +28,14 @@ def format_patient_search_results(bundle: Dict[str, Any]) -> str:
 
         given_name = ' '.join(name.get('given', []))
         
+        if params is not None:
+            if params.get('family'): 
+                if name.get('family', '').lower() != params['family'].lower():
+                    continue
+            if params.get('given'):
+                if given_name.lower() != params['given'].lower():
+                    continue
+                
         formatted_str = (
             f"Patient ID: {patient.get('id')}\n"
             f"                Name: {name.get('family')}, {given_name}\n"
