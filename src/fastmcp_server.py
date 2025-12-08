@@ -123,10 +123,25 @@ async def get_patient_observations(patientId: str, code = None, dateFrom = None,
     return await fhir_client.get_patient_observations({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_patient_conditions(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, onsetDate: Optional[str] = None):
-    """Get medical conditions/diagnoses for a patient."""
+async def get_patient_conditions(patientId: str, onsetDate = None,  status = None):
+    """Get medical conditions/diagnoses for a patient.
+    Args:
+        patientId: required
+        onsetDate: YYYY-MM-DD format (can be None)
+        status: can be None, otherwise it has to be among "active", "inactive", and "resolved"
+    """
     await ensure_auth()
-    args = {"patientId": patientId, "status": status, "onsetDate": onsetDate}
+    args = {"patientId": patientId, "onsetDate": onsetDate, "status": status}
+    
+    # onsetDate YYYY-MM-DD 형식일 때만 포함
+    if onsetDate and _is_valid_yyyy_mm_dd(onsetDate):
+        args["onsetDate"] = onsetDate
+    
+    # status 허용된 값일 때만 포함
+    allowed_status = ["active", "inactive", "resolved"]
+    if status and status in allowed_status:
+        args["status"] = status
+        
     return await fhir_client.get_patient_conditions({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()

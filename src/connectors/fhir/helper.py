@@ -579,19 +579,22 @@ def format_conditions(bundle: Dict[str, Any]) -> str:
         name = coding.get('display') or condition.get('code', {}).get('text') or 'Unknown Condition'
         code = coding.get('code', 'Unknown')
         system = coding.get('system', 'Unknown')
-        
+        category = condition.get('category', [{}])[0].get('coding', [{}])[0].get('code') or 'Unknown Category'
         onset_str = ''
         if condition.get('onsetDateTime'):
             onset_str = f" (onset: {condition['onsetDateTime'].split('T')[0]})"
             
-        item = (
-            f"\n          - Name: {name}\n"
-            f"          - Code: {code}\n"
-            f"          - System: {system}\n"
-            f"          - OnSet Date:{onset_str}\n"
-            f"          - Status: {condition.get('status')}\n"
-            f"          "
-        )
+        # item = (
+        #     f"\n          - Name: {name}\n"
+        #     f"          - Category: {category}\n"
+        #     f"          - Code: {code}\n"
+        #     f"          - System: {system}\n"
+        #     f"          - OnSet Date:{onset_str}\n"
+        #     f"          - Status: {condition.get('status')}\n"
+        #     f"          "
+        # )
+        item = f"[{category}] {code}: {name} {onset_str}, status = {condition.get('status', 'unknown')}"
+        
         lines.append(item)
 
     return '\n'.join(lines)
