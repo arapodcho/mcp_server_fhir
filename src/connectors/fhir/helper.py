@@ -444,20 +444,22 @@ def format_recent_health_metrics(bundle: Dict[str, Any]) -> str:
     for entry in entries:
         obs = entry.get('resource', {})
         obs_type = obs.get('code', {}).get('coding', [{}])[0].get('display') or 'Unknown'
-
+        obs_category = obs.get('category', [{}])[0].get('coding',[{}])[0].get('code') or 'Unknown'
         if obs_type not in metrics:
             val_q = obs.get('valueQuantity', {})
             value_str = f"{val_q.get('value', 'No value')} {val_q.get('unit', '')}"
             date_str = obs.get('effectiveDateTime', '').split('T')[0] or 'unknown date'
             
             metrics[obs_type] = {
+                'category': obs_category,
+                'status': obs.get('status', 'unknown'),
                 'value': value_str,
                 'date': date_str
             }
 
     output = []
     for type_name, data in metrics.items():
-        output.append(f"- {type_name}: {data['value']} ({data['date']})")
+        output.append(f"[{data['category']}] {type_name}: {data['value']} ({data['date']}), status = {data['status']}")
 
     return '\n'.join(output)
 

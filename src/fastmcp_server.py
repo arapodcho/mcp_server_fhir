@@ -65,9 +65,9 @@ async def find_patient(last_name: str, first_name= None, birth_date=None, gender
     
     Args:
         lastName: Family name (required)
-        firstName: Given name (can be "")
-        birthDate: YYYY-MM-DD format (can be "")
-        gender: Patient gender (have to be among "male", "female", "other" and "unknown")
+        firstName: Given name (can be None)
+        birthDate: YYYY-MM-DD format (can be None)
+        gender: Patient gender (can be None, otherwise it has to be among "male", "female", "other" and "unknown")
     """
     await ensure_auth()
     # 조립 전 기본 검증 및 정제
@@ -90,8 +90,15 @@ async def find_patient(last_name: str, first_name= None, birth_date=None, gender
     return await fhir_client.find_patient(cleaned_args)
 
 @mcp.tool()
-async def get_patient_observations(patientId: str, code: Optional[str] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None, status: Optional[Literal["registered", "preliminary", "final", "amended", "corrected", "cancelled"]] = None):
-    """Get observations (vitals, labs) for a patient."""
+async def get_patient_observations(patientId: str, code = None, dateFrom = None, dateTo = None, status = None):
+    """Get observations (vitals, labs) for a patient.        
+    Args:
+        patientId: required
+        code:  can be None
+        dateFrom: YYYY-MM-DD format (can be None)
+        dateTo: YYYY-MM-DD format (can be None)
+        status: can be None, otherwise it has to be among "registered", "preliminary", "final", "amended", "corrected", and "cancelled"
+    """
     await ensure_auth()
     args = {
         "patientId": patientId,
@@ -100,6 +107,19 @@ async def get_patient_observations(patientId: str, code: Optional[str] = None, d
         "dateTo": dateTo,
         "status": status
     }
+    
+    # dateFrom YYYY-MM-DD 형식일 때만 포함
+    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+        args["dateFrom"] = dateFrom
+        
+    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+        args["dateTo"] = dateTo
+    
+    # status 허용된 값일 때만 포함
+    allowed_status = ["registered", "preliminary", "final", "amended", "corrected", "cancelled"]
+    if status and status in allowed_status:
+        args["status"] = status
+    
     return await fhir_client.get_patient_observations({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
