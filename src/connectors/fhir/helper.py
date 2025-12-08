@@ -29,11 +29,14 @@ def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[
         given_name = ' '.join(name.get('given', []))
         
         if params is not None:
-            if params.get('family'): 
-                if name.get('family', '').lower() != params['family'].lower():
+            if params.get('lastName'): 
+                if name.get('family', '').lower() != params['lastName'].lower():
                     continue
-            if params.get('given'):
-                if given_name.lower() != params['given'].lower():
+            if params.get('firstName'):
+                if given_name.lower() != params['firstName'].lower():
+                    continue
+            if params.get('gender') and params.get('gender') != 'unknown':
+                if patient.get('gender').lower() != params['gender'].lower():
                     continue
                 
         formatted_str = (

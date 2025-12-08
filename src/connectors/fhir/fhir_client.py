@@ -56,12 +56,12 @@ class FhirClient:
         if args.get('lastName'): params['family'] = args['lastName']
         if args.get('firstName'): params['given'] = args['firstName']
         if args.get('birthDate'): params['birthdate'] = args['birthDate']
-        if args.get('gender'): params['gender'] = args['gender']
+        # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
 
         response = await self.client.get("/Patient", params=params)
         
         # Helper를 사용하여 검색 결과 포맷팅
-        formatted_text = helper.format_patient_search_results(response.json(), params)
+        formatted_text = helper.format_patient_search_results(response.json(), args)
         
         #입력 값과 matching
         

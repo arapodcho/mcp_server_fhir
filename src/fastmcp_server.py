@@ -59,7 +59,7 @@ mcp = FastMCP("fhir-mcp", host="0.0.0.0", port=8052)
 # FastMCP는 함수 시그니처와 Docstring을 통해 Schema를 자동 생성합니다.
 
 @mcp.tool()
-async def find_patient(last_name: str, gender: Literal["male", "female", "other", "unknown"], first_name= None, birth_date=None):
+async def find_patient(last_name: str, first_name= None, birth_date=None, gender=None):
     """
     Search for a patient by demographics.
     
