@@ -18,7 +18,7 @@ def build_patient_summary_prompt(data: Dict[str, Any]) -> str:
             {helper.format_conditions(data.get('conditions'))}
             
             Active Medications:
-            {helper.format_medications(data.get('medications'))}
+            {helper.format_medication_requests(data.get('medications'))}
             
             Allergies:
             {helper.format_allergies(data.get('allergies'))}
@@ -51,7 +51,7 @@ def build_medication_review_prompt(data: Dict[str, Any]) -> str:
     return f"""Please review the following medication regimen:
   
             Current Medications:
-            {helper.format_medications(data.get('medications'))}
+            {helper.format_medication_requests(data.get('medications'))}
             
             Patient Allergies:
             {helper.format_allergies(data.get('allergies'))}
@@ -90,7 +90,7 @@ def build_lab_trend_analysis_prompt(data: Dict[str, Any]) -> str:
             {helper.format_conditions(data.get('conditions'))}
             
             Current Medications:
-            {helper.format_medications(data.get('medications'))}
+            {helper.format_medication_requests(data.get('medications'))}
             
             Please provide:
             1. Analysis of trends and patterns in lab values over time

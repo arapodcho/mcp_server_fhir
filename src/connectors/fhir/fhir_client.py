@@ -6,9 +6,10 @@ from urllib.parse import urlencode
 
 # 같은 폴더에 있는 helper.py를 import 한다고 가정합니다.
 from . import helper
-
+import copy
 # ResourceType은 문자열로 처리
 ResourceType = str
+MEDICATION_INFO_RESOURCE = "Medication"
 
 class FhirClient:
     def __init__(self, base_url: str):
@@ -119,7 +120,7 @@ class FhirClient:
                 "text": json.dumps(data, indent=2)
             }]
         }
-
+    
     async def get_patient_observations(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
         if args.get('code'): params['code'] = args['code']
@@ -141,13 +142,35 @@ class FhirClient:
         formatted_text = helper.format_conditions(response.json())
         return self._format_response_text(formatted_text)
 
-    async def get_patient_medications(self, args: Dict[str, Any]):
+    async def _get_medication_info(self, input: list[Dict[str, Any]]):
+        result_value = copy.deepcopy(input)
+        current_medications = [current_result.get('medication', '') for current_result in input if current_result.get('medication', '')]
+        #if Medication is retrieved as reference number, get Medication info
+        for index, current_medication in enumerate(current_medications):
+            if current_medication.startswith('Medication/'):
+                med_id = current_medication.split('/')[1]
+                response = await self.client.get(f"/{MEDICATION_INFO_RESOURCE}/{med_id}")
+                current_medication_info = helper.format_medication_info(response.json())
+                result_value[index]['medication'] = current_medication_info  
+        return result_value        
+        
+    #for medication request
+    async def get_patient_medication_requests(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
         if args.get('status'): params['status'] = args['status']
 
-        response = await self.client.get("/MedicationRequest", params=params)
-        formatted_text = helper.format_medications(response.json())
-        return self._format_response_text(formatted_text)
+        
+        response = await self.client.get(f"/MedicationRequest", params=params)
+        
+        formatted_list = helper.format_medication_requests(response.json()) #adding medication name or reference info
+        result_list = await self._get_medication_info(formatted_list)
+        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
+        result_text = '\n'.join(result_list_text)
+        return self._format_response_text(result_text)
+
+    async def get_patient_medication_related_resources(self, args: Dict[str, Any]):
+        
+        return False
 
     async def get_patient_encounters(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
@@ -217,7 +240,7 @@ class FhirClient:
 
         response = await self.client.get("/MedicationStatement", params=params)
         # MedicationStatement도 MedicationRequest와 구조가 유사하므로 같은 포맷터 시도
-        formatted_text = helper.format_medications(response.json())
+        formatted_text = helper.format_medication_requests(response.json())
         return self._format_response_text(formatted_text)
 
     async def get_patient_lab_results(self, args: Dict[str, Any]):

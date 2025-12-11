@@ -78,11 +78,15 @@ async def find_patient(last_name: str, first_name= None, birth_date=None, gender
     # birthDate는 YYYY-MM-DD 형식일 때만 포함
     if birth_date and _is_valid_yyyy_mm_dd(birth_date):
         args["birthDate"] = birth_date
+    else:
+        args["birthDate"] = None
     
     # gender는 허용된 값일 때만 포함
     allowed_genders = {"male", "female", "other", "unknown"}
     if gender and gender in allowed_genders:
         args["gender"] = gender
+    else:
+        args["gender"] = None
     
     # 빈 문자열 제거
     cleaned_args = {k: v for k, v in args.items() if v != ''}
@@ -111,14 +115,20 @@ async def get_patient_observations(patientId: str, code = None, dateFrom = None,
     # dateFrom YYYY-MM-DD 형식일 때만 포함
     if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
         args["dateFrom"] = dateFrom
+    else:
+        args["dateFrom"] = None
         
     if dateTo and _is_valid_yyyy_mm_dd(dateTo):
         args["dateTo"] = dateTo
+    else:
+        args["dateTo"] = None
     
     # status 허용된 값일 때만 포함
     allowed_status = ["registered", "preliminary", "final", "amended", "corrected", "cancelled"]
     if status and status in allowed_status:
         args["status"] = status
+    else:
+        args["status"] = None
     
     return await fhir_client.get_patient_observations({k: v for k, v in args.items() if v is not None})
 
@@ -136,20 +146,67 @@ async def get_patient_conditions(patientId: str, onsetDate = None,  status = Non
     # onsetDate YYYY-MM-DD 형식일 때만 포함
     if onsetDate and _is_valid_yyyy_mm_dd(onsetDate):
         args["onsetDate"] = onsetDate
+    else:
+        args["onsetDate"] = None
     
     # status 허용된 값일 때만 포함
     allowed_status = ["active", "inactive", "resolved"]
     if status and status in allowed_status:
         args["status"] = status
+    else:
+        args["status"] = None
         
     return await fhir_client.get_patient_conditions({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_patient_medications(patientId: str, status: Optional[Literal["active", "completed", "stopped", "on-hold"]] = None):
-    """Get medication orders for a patient."""
+async def get_patient_medication_requests(patientId: str, status = None):
+    """
+    Retrieves medication orders (prescriptions) for a specific patient. 
+    
+    Use this tool to find out what medications a doctor has prescribed or ordered, 
+    regardless of whether the patient has actually taken them.
+    
+    Args:
+        patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+        status: Optional filter for the order status (e.g., "active", "completed", "stopped", "draft").
+    """
     await ensure_auth()
     args = {"patientId": patientId, "status": status}
-    return await fhir_client.get_patient_medications({k: v for k, v in args.items() if v is not None})
+    allowed_status = ["active", "completed", "stopped", "on-hold"]
+    if status and status in allowed_status:
+        args["status"] = status
+    else:
+        args["status"] = None
+        
+    return await fhir_client.get_patient_medication_requests({k: v for k, v in args.items() if v is not None})
+
+@mcp.tool()
+def search_medication_dispenses(patient_id: str):
+    """
+    Retrieves records of medications dispensed (supplied) by a pharmacy.
+    
+    Use this tool to verify if the patient has actually received or picked up 
+    the prescribed medication from the pharmacy.
+    
+    Args:
+        patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+    """
+    # Implementation here...
+    return 'Not implemented yet.'
+
+@mcp.tool()
+def search_medication_administrations(patient_id: str):
+    """
+    Retrieves records of actual medication administration events.
+    
+    Use this tool to track exactly when and how much medication was consumed by 
+    or injected into the patient (common in inpatient or supervised settings).
+    
+    Args:
+        patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+    """
+    # Implementation here...
+    return 'Not implemented yet.'
 
 @mcp.tool()
 async def get_patient_encounters(patientId: str, status: Optional[Literal["planned", "arrived", "in-progress", "finished", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
@@ -158,12 +215,12 @@ async def get_patient_encounters(patientId: str, status: Optional[Literal["plann
     args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
-    """Get allergies and intolerances for a patient."""
-    await ensure_auth()
-    args = {"patientId": patientId, "status": status, "type": type, "category": category}
-    return await fhir_client.get_patient_allergies({k: v for k, v in args.items() if v is not None})
+# @mcp.tool()
+# async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
+#     """Get allergies and intolerances for a patient."""
+#     await ensure_auth()
+#     args = {"patientId": patientId, "status": status, "type": type, "category": category}
+#     return await fhir_client.get_patient_allergies({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
 async def get_patient_procedures(patientId: str, status: Optional[Literal["preparation", "in-progress", "completed", "entered-in-error"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
@@ -172,19 +229,19 @@ async def get_patient_procedures(patientId: str, status: Optional[Literal["prepa
     args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_patient_careplans(patientId: str, category: Optional[str] = None, status: Optional[Literal["draft", "active", "suspended", "completed", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-    """Get care plans for a patient."""
-    await ensure_auth()
-    args = {"patientId": patientId, "category": category, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
-    return await fhir_client.get_patient_care_plans({k: v for k, v in args.items() if v is not None})
+# @mcp.tool()
+# async def get_patient_careplans(patientId: str, category: Optional[str] = None, status: Optional[Literal["draft", "active", "suspended", "completed", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
+#     """Get care plans for a patient."""
+#     await ensure_auth()
+#     args = {"patientId": patientId, "category": category, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+#     return await fhir_client.get_patient_care_plans({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_patient_careteam(patientId: str, status: Optional[str] = None):
-    """Get care team members for a patient."""
-    await ensure_auth()
-    args = {"patientId": patientId, "status": status}
-    return await fhir_client.get_patient_care_team({k: v for k, v in args.items() if v is not None})
+# @mcp.tool()
+# async def get_patient_careteam(patientId: str, status: Optional[str] = None):
+#     """Get care team members for a patient."""
+#     await ensure_auth()
+#     args = {"patientId": patientId, "status": status}
+#     return await fhir_client.get_patient_care_team({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
 async def get_vital_signs(patientId: str, timeframe: Optional[str] = None):
@@ -217,12 +274,12 @@ async def get_medications_history(patientId: str, includeDiscontinued: Optional[
     args = {"patientId": patientId, "includeDiscontinued": includeDiscontinued}
     return await fhir_client.get_medication_history({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_appointments(patientId: str, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-    """Get patient's Appointments."""
-    await ensure_auth()
-    args = {"patientId": patientId, "dateFrom": dateFrom, "dateTo": dateTo}
-    return await fhir_client.get_patient_appointments({k: v for k, v in args.items() if v is not None})
+# @mcp.tool()
+# async def get_appointments(patientId: str, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
+#     """Get patient's Appointments."""
+#     await ensure_auth()
+#     args = {"patientId": patientId, "dateFrom": dateFrom, "dateTo": dateTo}
+#     return await fhir_client.get_patient_appointments({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
 async def clinical_query(query: str):

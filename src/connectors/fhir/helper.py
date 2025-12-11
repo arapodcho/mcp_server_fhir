@@ -599,34 +599,71 @@ def format_conditions(bundle: Dict[str, Any]) -> str:
 
     return '\n'.join(lines)
 
-
-def format_medications(bundle: Dict[str, Any]) -> str:
+#for medication request
+def format_medication_requests(bundle: Dict[str, Any]) -> list:
     entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
     if not entries:
-        return "No active medications"
+        return []
 
     lines = []
     for entry in entries:
         med = entry.get('resource', {})
-        text = med.get('medicationCodeableConcept', {}).get('text') or 'Unknown Medication'
+        identifier = med.get('identifier', [{}])
+        identifier_txt = ''
+        for contents in identifier:
+            current_value = contents.get('value', '')
+            identifier_txt += current_value
+        identifier_code = ''
+        
+        
+        status = med.get('status', 'unknown')
+        intent = med.get('intent', 'unknown')
+        dateOn = med.get('authoredOn', '').split('T')[0] or 'unknown date'
+        valid_start = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('start', '').split('T')[0] or 'unknown'
+        valid_end = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('end', '').split('T')[0] or 'unknown'
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
         
         dosage_instr = med.get('dosageInstruction', [{}])[0]
-        instr_text = dosage_instr.get('text', 'No dosage instructions')
+        dosage_text = dosage_instr.get('text', 'No dosage instructions')
+        dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
         as_needed = dosage_instr.get('asNeededBoolean', 'Not specified')
         
-        item = (
-            f"\n          - {text}\n"
-            f"          - Dosage: {med.get('dosage')}\n"
-            f"          - Frequency: {med.get('frequency')}\n"
-            f"          - {instr_text}\n"
-            f"          - As Needed: {as_needed}\n"
-            f"          - Related Condition: {med.get('condition', 'Not specified')}\n"
-            f"          "
-        )
+        dosage = med.get('dosage', '')
+        frequency = med.get('frequency', '')
+        related_condition = med.get('condition', 'Not specified')
+        
+        dose_quantity_value = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('value', '')
+        dose_quantity_unit = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('unit', '')
+                
+        item = {}
+        item['medication'] = medication
+        item['status'] = status
+        item['intent'] = intent
+        item['dateOn'] = dateOn
+        item['validity'] = f"{valid_start} to {valid_end}"
+        item['dosage'] = dosage_text
+        item['dosage_timing'] = dosage_timing
+        item['dosage_quantity'] = f"{dose_quantity_value} {dose_quantity_unit}"
         lines.append(item)
 
-    return '\n'.join(lines)
+    return lines
 
+def format_medication_info(input: Dict[str, Any]) -> str:
+
+    result_value = 'Unknown Medication'
+    identifier_list = input.get('identifier', [{}])
+    for identifier in identifier_list:
+        current_system = identifier.get('system', '')
+        current_value = identifier.get('value', '')
+        if current_system.endswith('medication-name'):
+            result_value = current_value
+            break
+        if current_system.endswith('medication-mix'):
+            result_value = current_value
+            
+    return result_value
 
 def format_allergies(bundle: Dict[str, Any]) -> str:
     entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
@@ -673,7 +710,7 @@ def format_patient_summary(data: Dict[str, Any]) -> str:
     # Note: data.get('conditions') returns the list/bundle expected by helper functions
     # Using 'or []' to pass empty list if None
     conditions_str = format_conditions(data.get('conditions') or [])
-    medications_str = format_medications(data.get('medications') or [])
+    medications_str = format_medication_requests(data.get('medications') or [])
     allergies_str = format_allergies(data.get('allergies') or [])
     immunizations_str = format_immunizations(data.get('immunizations') or {})
     procedures_str = format_procedures(data.get('procedures') or {})
