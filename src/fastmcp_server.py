@@ -14,7 +14,10 @@ from utils.auth_config import AuthConfig
 # 1. Configuration & Dependencies Initialization
 # TypeScript의 constructor에서 받던 인자들을 환경 변수나 설정에서 가져옵니다.
 FHIR_URL = os.getenv("FHIR_URL", "http://hapi.fhir.org/baseR4")
-FHIR_URL = "http://127.0.0.1:8084/fhir"
+FHIR_URL = "http://127.0.0.1:8084/fhir" #For Mimic-iv demo data in localhost
+FHIR_URL = "https://server.fire.ly" #for Firely test server
+
+
 # Auth Config 구성
 # auth_config = AuthConfig(
 #     # 필요한 설정값 채우기
@@ -301,6 +304,13 @@ async def get_patient_procedures(patientId: str, dateFrom = None, dateTo = None,
         
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
+@mcp.tool()
+async def get_medications_history(patientId: str, includeDiscontinued = None):
+    """Get patient's medication history including changes."""
+    await ensure_auth()
+    args = {"patientId": patientId, "includeDiscontinued": includeDiscontinued}
+    return await fhir_client.get_medication_history({k: v for k, v in args.items() if v is not None})
+
 # @mcp.tool()
 # async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
 #     """Get allergies and intolerances for a patient."""
@@ -346,13 +356,6 @@ async def get_patient_procedures(patientId: str, dateFrom = None, dateTo = None,
 #     args = {"patientId": patientId, "category": category, "timeframe": timeframe}
 #     return await fhir_client.get_patient_lab_results({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_medications_history(patientId: str, includeDiscontinued: Optional[bool] = None):
-    """Get patient's medication history including changes."""
-    await ensure_auth()
-    args = {"patientId": patientId, "includeDiscontinued": includeDiscontinued}
-    return await fhir_client.get_medication_history({k: v for k, v in args.items() if v is not None})
-
 # @mcp.tool()
 # async def get_appointments(patientId: str, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
 #     """Get patient's Appointments."""
@@ -360,14 +363,14 @@ async def get_medications_history(patientId: str, includeDiscontinued: Optional[
 #     args = {"patientId": patientId, "dateFrom": dateFrom, "dateTo": dateTo}
 #     return await fhir_client.get_patient_appointments({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def clinical_query(query: str):
-    """Execute a natural language clinical query."""
-    await ensure_auth()
-    # query-parser 로직 필요 (여기서는 mock)
-    # query_params = await parse_clinician_query(query)
-    # return await fhir_client.execute_query(query_params)
-    pass
+# @mcp.tool()
+# async def clinical_query(query: str):
+#     """Execute a natural language clinical query."""
+#     await ensure_auth()
+#     # query-parser 로직 필요 (여기서는 mock)
+#     # query_params = await parse_clinician_query(query)
+#     # return await fhir_client.execute_query(query_params)
+#     pass
 
 # 5. Run Server
 if __name__ == "__main__":

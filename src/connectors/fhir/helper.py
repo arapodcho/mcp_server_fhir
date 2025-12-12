@@ -728,6 +728,30 @@ def format_medication_info(input: Dict[str, Any]) -> str:
             
     return result_value
 
+def format_medication_statement(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        med = entry.get('resource', {})               
+        status = med.get('status', 'unknown')
+        
+        medication = med.get('medicationCodeableConcept', {}).get('text', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+        
+        dosage = med.get('dosage', [{}])[0].get('text', '')
+                
+        item = {}
+        item['medication'] = medication
+        item['status'] = status                
+        item['dosage'] = dosage        
+        lines.append(item)
+
+    return lines
+
 def format_allergies(bundle: Dict[str, Any]) -> str:
     entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
     if not entries:

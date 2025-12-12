@@ -263,13 +263,13 @@ class FhirClient:
 
     async def get_medication_history(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
-        response = await self.client.get("/MedicationStatement", params=params)
-        # MedicationStatement도 MedicationRequest와 구조가 유사하므로 같은 포맷터 시도
-        formatted_text = helper.format_medication_requests(response.json())
-        return self._format_response_text(formatted_text)
+        
+        response = await self.client.get("/MedicationStatement", params=params)        
+        formatted_list = helper.format_medication_statement(response.json())
+        result_list = await self._get_medication_info(formatted_list)
+        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
+        result_text = '\n'.join(result_list_text)
+        return self._format_response_text(result_text)
 
     async def get_patient_lab_results(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
