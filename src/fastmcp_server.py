@@ -268,12 +268,37 @@ async def get_patient_encounters(patientId: str, dateFrom = None, dateTo = None,
         
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
-
 @mcp.tool()
-async def get_patient_procedures(patientId: str, status: Optional[Literal["preparation", "in-progress", "completed", "entered-in-error"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-    """Get procedures performed on a patient."""
+async def get_patient_procedures(patientId: str, dateFrom = None, dateTo = None, status = None):
+    """
+    Get procedures performed on a patient.
+        
+    Args:
+        dateFrom: YYYY-MM-DD format (can be None)
+        dateTo: YYYY-MM-DD format (can be None)
+        status: can be None, otherwise it has to be among "preparation", "in-progress", "completed", and "entered-in-error""    
+    """
     await ensure_auth()
     args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+    
+    # dateFrom YYYY-MM-DD 형식일 때만 포함
+    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+        args["dateFrom"] = dateFrom
+    else:
+        args["dateFrom"] = None
+        
+    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+        args["dateTo"] = dateTo
+    else:
+        args["dateTo"] = None
+        
+    # status 허용된 값일 때만 포함
+    allowed_status = ["preparation", "in-progress", "completed", "entered-in-error"]
+    if status and status in allowed_status:
+        args["status"] = status
+    else:
+        args["status"] = None
+        
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
 # @mcp.tool()

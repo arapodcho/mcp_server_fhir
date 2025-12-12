@@ -227,16 +227,19 @@ def format_procedures(bundle: Dict[str, Any]) -> str:
     for entry in entries:
         procedure = entry.get('resource', {})
         proc_display = procedure.get('code', {}).get('coding', [{}])[0].get('display') or 'Unknown procedure'
-        
+        category = procedure.get('category', {}).get('coding', [{}])[0].get('code') or 'Unknown category'
         period = procedure.get('performedPeriod', {})
         start = period.get('start', '').split('T')[0] or 'unknown date'
+        start_time = period.get('start', '').split('T')[-1] or ''
         end = period.get('end', '').split('T')[0] or 'unknown date'
+        end_time = period.get('end', '').split('T')[-1] or ''
         
         item = (
             f"\n        - {proc_display}\n"
-            f"        - Start: {start}\n"
-            f"        - End: {end}\n"
+            f"        - Start: {start}:{start_time}\n"
+            f"        - End: {end}:{end_time}\n"
             f"        - Status: {procedure.get('status')}\n"
+            f"        - Category: {category}\n"            
             f"        "
         )
         output.append(item)
