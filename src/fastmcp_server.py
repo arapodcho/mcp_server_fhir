@@ -236,18 +236,38 @@ async def search_medication_administrations(patient_id: str, status = None):
     return await fhir_client.get_patient_medication_administrations({k: v for k, v in args.items() if v is not None}) 
 
 @mcp.tool()
-async def get_patient_encounters(patientId: str, status: Optional[Literal["planned", "arrived", "in-progress", "finished", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-    """Get healthcare encounters/visits for a patient."""
+async def get_patient_encounters(patientId: str, dateFrom = None, dateTo = None, status = None):
+    """
+    Get healthcare encounters/visits for a patient.
+
+    Args:
+        dateFrom: YYYY-MM-DD format (can be None)
+        dateTo: YYYY-MM-DD format (can be None)
+        status: can be None, otherwise it has to be among "planned", "arrived", "in-progress", "finished", and "cancelled"
+    """
     await ensure_auth()
     args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+    
+    # dateFrom YYYY-MM-DD 형식일 때만 포함
+    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+        args["dateFrom"] = dateFrom
+    else:
+        args["dateFrom"] = None
+        
+    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+        args["dateTo"] = dateTo
+    else:
+        args["dateTo"] = None
+        
+    # status 허용된 값일 때만 포함
+    allowed_status = ["planned", "arrived", "in-progress", "finished", "cancelled"]
+    if status and status in allowed_status:
+        args["status"] = status
+    else:
+        args["status"] = None
+        
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
-# @mcp.tool()
-# async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
-#     """Get allergies and intolerances for a patient."""
-#     await ensure_auth()
-#     args = {"patientId": patientId, "status": status, "type": type, "category": category}
-#     return await fhir_client.get_patient_allergies({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
 async def get_patient_procedures(patientId: str, status: Optional[Literal["preparation", "in-progress", "completed", "entered-in-error"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
@@ -255,6 +275,13 @@ async def get_patient_procedures(patientId: str, status: Optional[Literal["prepa
     await ensure_auth()
     args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
+
+# @mcp.tool()
+# async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
+#     """Get allergies and intolerances for a patient."""
+#     await ensure_auth()
+#     args = {"patientId": patientId, "status": status, "type": type, "category": category}
+#     return await fhir_client.get_patient_allergies({k: v for k, v in args.items() if v is not None})
 
 # @mcp.tool()
 # async def get_patient_careplans(patientId: str, category: Optional[str] = None, status: Optional[Literal["draft", "active", "suspended", "completed", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
@@ -270,29 +297,29 @@ async def get_patient_procedures(patientId: str, status: Optional[Literal["prepa
 #     args = {"patientId": patientId, "status": status}
 #     return await fhir_client.get_patient_care_team({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_vital_signs(patientId: str, timeframe: Optional[str] = None):
-    """
-    Get patient's vital signs history.
+# @mcp.tool()
+# async def get_vital_signs(patientId: str, timeframe: Optional[str] = None):
+#     """
+#     Get patient's vital signs history.
     
-    Args:
-        timeframe: e.g., 3m, 6m, 1y, all
-    """
-    await ensure_auth()
-    args = {"patientId": patientId, "timeframe": timeframe}
-    return await fhir_client.get_patient_vital_signs({k: v for k, v in args.items() if v is not None})
+#     Args:
+#         timeframe: e.g., 3m, 6m, 1y, all
+#     """
+#     await ensure_auth()
+#     args = {"patientId": patientId, "timeframe": timeframe}
+#     return await fhir_client.get_patient_vital_signs({k: v for k, v in args.items() if v is not None})
 
-@mcp.tool()
-async def get_lab_results(patientId: str, category: Optional[str] = None, timeframe: Optional[str] = None):
-    """
-    Get patient's lab results.
+# @mcp.tool()
+# async def get_lab_results(patientId: str, category: Optional[str] = None, timeframe: Optional[str] = None):
+#     """
+#     Get patient's lab results.
     
-    Args:
-        category: e.g., CBC, METABOLIC, LIPIDS, ALL
-    """
-    await ensure_auth()
-    args = {"patientId": patientId, "category": category, "timeframe": timeframe}
-    return await fhir_client.get_patient_lab_results({k: v for k, v in args.items() if v is not None})
+#     Args:
+#         category: e.g., CBC, METABOLIC, LIPIDS, ALL
+#     """
+#     await ensure_auth()
+#     args = {"patientId": patientId, "category": category, "timeframe": timeframe}
+#     return await fhir_client.get_patient_lab_results({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
 async def get_medications_history(patientId: str, includeDiscontinued: Optional[bool] = None):

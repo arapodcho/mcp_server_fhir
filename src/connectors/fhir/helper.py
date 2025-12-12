@@ -253,20 +253,24 @@ def format_encounters(bundle: Dict[str, Any]) -> str:
     for entry in entries:
         encounter = entry.get('resource', {})
         start = encounter.get('period', {}).get('start', '').split('T')[0] or 'unknown date'
-        
+        start_time = encounter.get('period', {}).get('start', '').split('T')[-1] or ''
+        end = encounter.get('period', {}).get('end', '').split('T')[0] or 'unknown date'
+        end_time = encounter.get('period', {}).get('end', '').split('T')[-1] or ''
+        #"start"와 "end" 를 period로 정리해서 출력
         type_list = encounter.get('type', [{}])
         type_display = type_list[0].get('coding', [{}])[0].get('display') if type_list else 'Unknown encounter type'
-        
+        class_display = encounter.get('class', {}).get('code', '')
         reason_list = encounter.get('reasonCode', [{}])
         reason_display = 'Unknown reason for encounter'
         if reason_list:
             reason_display = reason_list[0].get('coding', [{}])[0].get('display') or reason_list[0].get('text') or reason_display
 
         item = (
-            f"- {start}\n"
+            f"- {start}:{start_time} ~ {end}:{end_time}\n"
             f"              - {type_display}\n"
             f"              - {reason_display}\n"
             f"              - {encounter.get('status')}\n"
+            f"              - {class_display}\n"
             f"              "
         )
         output.append(item)
