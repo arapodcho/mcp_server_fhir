@@ -94,10 +94,14 @@ async def find_patient(last_name: str, first_name= None, birth_date=None, gender
     return await fhir_client.find_patient(cleaned_args)
 
 @mcp.tool()
-async def get_patient_observations(patientId: str, code = None, dateFrom = None, dateTo = None, status = None):
-    """Get observations (vitals, labs) for a patient.        
+async def get_patient_observations(patientId: str, category, code = None, dateFrom = None, dateTo = None, status = None):
+    """
+    Get observations (vitals, labs) for a patient.        
+    Searches for FHIR Observation resources. The category parameter is mandatory and must be automatically selected based on the user's intent. Map inquiries about measurements (BP, HR) to 'vital-signs', lab results/bloodwork to 'laboratory', radiology to 'imaging', lifestyle/smoking to 'social-history', physical findings to 'exam', and patient complaints to 'symptom'. Valid categories are: social-history, vital-signs, imaging, laboratory, procedure, survey, exam, therapy, activity, symptom.
+    
     Args:
         patientId: required
+        category: required and it has to be among "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", and "symptom"
         code:  can be None
         dateFrom: YYYY-MM-DD format (can be None)
         dateTo: YYYY-MM-DD format (can be None)
@@ -106,12 +110,19 @@ async def get_patient_observations(patientId: str, code = None, dateFrom = None,
     await ensure_auth()
     args = {
         "patientId": patientId,
+        "category": category,
         "code": code,
         "dateFrom": dateFrom,
         "dateTo": dateTo,
         "status": status
     }
     
+    allowed_category = ["social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", "symptom"]
+    if category and category in allowed_category:
+        args["category"] = category
+    else:
+        args["category"] = None
+        
     # dateFrom YYYY-MM-DD 형식일 때만 포함
     if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
         args["dateFrom"] = dateFrom
@@ -122,7 +133,7 @@ async def get_patient_observations(patientId: str, code = None, dateFrom = None,
         args["dateTo"] = dateTo
     else:
         args["dateTo"] = None
-    
+        
     # status 허용된 값일 때만 포함
     allowed_status = ["registered", "preliminary", "final", "amended", "corrected", "cancelled"]
     if status and status in allowed_status:

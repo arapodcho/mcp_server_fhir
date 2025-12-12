@@ -122,12 +122,17 @@ class FhirClient:
         }
     
     async def get_patient_observations(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
+        params = {
+            'patient': str(args['patientId']),
+            '_sort': '-date',
+            '_count': '100'
+        }        
+        if args.get('category'): params['category'] = args['category']
         if args.get('code'): params['code'] = args['code']
         if args.get('status'): params['status'] = args['status']
         if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
         if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
+        
         response = await self.client.get("/Observation", params=params)
         # Observation은 종류가 다양하므로 helper의 recent metrics 사용
         formatted_text = helper.format_recent_health_metrics(response.json())
