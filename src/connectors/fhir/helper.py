@@ -614,8 +614,7 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
             current_value = contents.get('value', '')
             identifier_txt += current_value
         identifier_code = ''
-        
-        
+                
         status = med.get('status', 'unknown')
         intent = med.get('intent', 'unknown')
         dateOn = med.get('authoredOn', '').split('T')[0] or 'unknown date'
@@ -628,11 +627,6 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         dosage_instr = med.get('dosageInstruction', [{}])[0]
         dosage_text = dosage_instr.get('text', 'No dosage instructions')
         dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
-        as_needed = dosage_instr.get('asNeededBoolean', 'Not specified')
-        
-        dosage = med.get('dosage', '')
-        frequency = med.get('frequency', '')
-        related_condition = med.get('condition', 'Not specified')
         
         dose_quantity_value = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('value', '')
         dose_quantity_unit = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('unit', '')
@@ -646,6 +640,68 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         item['dosage'] = dosage_text
         item['dosage_timing'] = dosage_timing
         item['dosage_quantity'] = f"{dose_quantity_value} {dose_quantity_unit}"
+        lines.append(item)
+
+    return lines
+
+def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        med = entry.get('resource', {})               
+        status = med.get('status', 'unknown')
+                
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+        
+        dosage_instr = med.get('dosageInstruction', [{}])[0]
+        dosage_text =  dosage_instr.get('route', {}).get('coding', [{}])[0].get('code', '')
+        dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
+                
+        item = {}
+        item['medication'] = medication
+        item['status'] = status        
+        item['dosage'] = dosage_text
+        item['dosage_timing'] = dosage_timing        
+        lines.append(item)
+
+    return lines
+
+def format_medication_administrations(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        med = entry.get('resource', {})               
+        status = med.get('status', 'unknown')
+        category = med.get('category', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Category'                
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+        
+        dosage_instr = med.get('dosage', {})
+        dosage_method = ''
+        dosage_dose = ''
+        dosage_rate = ''
+        
+        if dosage_instr != {}:
+            dosage_method = dosage_instr.get('method', {}).get('coding', [{}])[0].get('code', '')
+            dosage_dose = str(dosage_instr.get('dose', {}).get('value', '')) + ' ' + dosage_instr.get('dose', {}).get('unit', '')
+            dosage_rate = str(dosage_instr.get('rateQuantity', {}).get('value', '')) + ' ' + dosage_instr.get('rateQuantity', {}).get('unit', '')
+                
+        item = {}
+        item['medication'] = medication
+        item['status'] = status        
+        item['category'] = category
+        item['dosage_method'] = dosage_method
+        item['dosage_dose'] = dosage_dose        
+        item['dosage_rate'] = dosage_rate        
         lines.append(item)
 
     return lines

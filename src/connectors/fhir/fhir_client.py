@@ -158,7 +158,6 @@ class FhirClient:
     async def get_patient_medication_requests(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
         if args.get('status'): params['status'] = args['status']
-
         
         response = await self.client.get(f"/MedicationRequest", params=params)
         
@@ -167,7 +166,31 @@ class FhirClient:
         result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
         result_text = '\n'.join(result_list_text)
         return self._format_response_text(result_text)
+    
+    async def get_patient_medication_dispenses(self, args: Dict[str, Any]):
+        params = {'patient': str(args['patientId'])}
+        if args.get('status'): params['status'] = args['status']
+        
+        response = await self.client.get(f"/MedicationDispense", params=params)
+        
+        formatted_list = helper.format_medication_dispenses(response.json()) #adding medication name or reference info
+        result_list = await self._get_medication_info(formatted_list)
+        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
+        result_text = '\n'.join(result_list_text)
+        return self._format_response_text(result_text)
 
+    async def get_patient_medication_administrations(self, args: Dict[str, Any]):
+        params = {'patient': str(args['patientId'])}
+        if args.get('status'): params['status'] = args['status']
+        
+        response = await self.client.get(f"/MedicationAdministration", params=params)
+        
+        formatted_list = helper.format_medication_administrations(response.json()) #adding medication name or reference info
+        result_list = await self._get_medication_info(formatted_list)
+        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
+        result_text = '\n'.join(result_list_text)
+        return self._format_response_text(result_text)
+    
     async def get_patient_medication_related_resources(self, args: Dict[str, Any]):
         
         return False

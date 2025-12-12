@@ -168,11 +168,11 @@ async def get_patient_medication_requests(patientId: str, status = None):
     
     Args:
         patient_id: The FHIR Logical ID of the patient (e.g., "P001").
-        status: Optional filter for the order status (e.g., "active", "completed", "stopped", "draft").
+        status: Optional filter for the order status (e.g., "active", "on-hold", "ended", "stopped", "completed", "cancelled", "entered-in-error", "draft", "unknown"). 
     """
     await ensure_auth()
     args = {"patientId": patientId, "status": status}
-    allowed_status = ["active", "completed", "stopped", "on-hold"]
+    allowed_status = ["active", "on-hold", "ended", "stopped", "completed", "cancelled", "entered-in-error", "draft", "unknown"]
     if status and status in allowed_status:
         args["status"] = status
     else:
@@ -181,7 +181,7 @@ async def get_patient_medication_requests(patientId: str, status = None):
     return await fhir_client.get_patient_medication_requests({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-def search_medication_dispenses(patient_id: str):
+async def search_medication_dispenses(patient_id: str, status = None):
     """
     Retrieves records of medications dispensed (supplied) by a pharmacy.
     
@@ -190,12 +190,20 @@ def search_medication_dispenses(patient_id: str):
     
     Args:
         patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+        status: Optional filter for the order status (e.g., "preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown").
     """
-    # Implementation here...
-    return 'Not implemented yet.'
+    await ensure_auth()
+    args = {"patientId": patient_id, "status": status}
+    allowed_status = ["preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown"]
+    if status and status in allowed_status:
+        args["status"] = status
+    else:
+        args["status"] = None
+        
+    return await fhir_client.get_patient_medication_dispenses({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-def search_medication_administrations(patient_id: str):
+async def search_medication_administrations(patient_id: str, status = None):
     """
     Retrieves records of actual medication administration events.
     
@@ -204,9 +212,17 @@ def search_medication_administrations(patient_id: str):
     
     Args:
         patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+        status: Optional filter for the order status (e.g. "in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown").
     """
-    # Implementation here...
-    return 'Not implemented yet.'
+    await ensure_auth()
+    args = {"patientId": patient_id, "status": status}
+    allowed_status = ["in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown"]
+    if status and status in allowed_status:
+        args["status"] = status
+    else:
+        args["status"] = None
+    
+    return await fhir_client.get_patient_medication_administrations({k: v for k, v in args.items() if v is not None}) 
 
 @mcp.tool()
 async def get_patient_encounters(patientId: str, status: Optional[Literal["planned", "arrived", "in-progress", "finished", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
