@@ -8,9 +8,6 @@ from mcp.server.fastmcp import FastMCP, Context
 # 가정: 커넥터와 유틸리티는 이미 python으로 변환되어 있다고 가정하고 import합니다.
 # 실제 경로에 맞게 수정이 필요할 수 있습니다.
 from connectors.fhir.fhir_client import FhirClient
-from utils.cache import CacheManager
-from utils.auth import Auth
-from utils.auth_config import AuthConfig
 # from query_parser import parse_clinician_query # 필요한 경우 import
 
 # 1. Configuration & Dependencies Initialization
@@ -27,7 +24,6 @@ FHIR_RESOURCE_VALUE = os.getenv("FHIR_RESOURCE_VALUE", None)
 # 2. Initialize Clients
 # TS의 Server 클래스와 유사하게 상태를 관리합니다.
 fhir_client = FhirClient(FHIR_URL, FHIR_GRANT_TYPE, FHIR_TOKEN_ENDPOINT, FHIR_CLIENT_ID, FHIR_CLIENT_SECRET, FHIR_RESOURCE_VALUE)
-cache_manager = CacheManager()
 
 # Auth 처리를 위한 간단한 래퍼 (TS 로직 모방)
 # auth_handler = Auth(auth_config)

@@ -627,7 +627,9 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         dateOn = med.get('authoredOn', '').split('T')[0] or 'unknown date'
         valid_start = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('start', '').split('T')[0] or 'unknown'
         valid_end = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('end', '').split('T')[0] or 'unknown'
-        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
             medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
         
@@ -660,8 +662,9 @@ def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
     for entry in entries:
         med = entry.get('resource', {})               
         status = med.get('status', 'unknown')
-                
-        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'        
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
             medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
         
@@ -689,6 +692,8 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
         status = med.get('status', 'unknown')
         category = med.get('category', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Category'                
         medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
             medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
         
