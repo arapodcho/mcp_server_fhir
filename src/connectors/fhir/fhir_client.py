@@ -6,19 +6,22 @@ from urllib.parse import urlencode
 
 # 같은 폴더에 있는 helper.py를 import 한다고 가정합니다.
 from . import helper
+from .fhir_auth import FHIRClient
 import copy
 # ResourceType은 문자열로 처리
 ResourceType = str
 MEDICATION_INFO_RESOURCE = "Medication"
 
 class FhirClient:
-    def __init__(self, base_url: str):
-        self.access_token: Optional[str] = None
+    def __init__(self, base_url: str, grant_type=None, token_url=None, client_id=None, client_secret=None, resource_value=None):
+        self.fhir_auth_client = FHIRClient(token_url, client_id, client_secret, grant_type, resource_value)
+        self.access_token: Optional[str] = self.fhir_auth_client.get_access_token()
         self.client = httpx.AsyncClient(
             base_url=base_url,
             headers={
                 "Accept": "application/fhir+json",
                 # Authorization은 set_access_token에서 설정
+                "Authorization": f"Bearer {self.access_token}" if self.access_token else ""
             }
         )
 

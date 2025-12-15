@@ -1,5 +1,7 @@
 import asyncio
 import os
+from dotenv import load_dotenv
+load_dotenv()
 from typing import Optional, Literal
 from mcp.server.fastmcp import FastMCP, Context
 
@@ -13,19 +15,18 @@ from utils.auth_config import AuthConfig
 
 # 1. Configuration & Dependencies Initialization
 # TypeScript의 constructor에서 받던 인자들을 환경 변수나 설정에서 가져옵니다.
+
+#FHIR_URL = "http://127.0.0.1:8084/fhir" #For Mimic-iv demo data in localhost
+# FHIR_URL = "https://server.fire.ly" #for Firely test server
 FHIR_URL = os.getenv("FHIR_URL", "http://hapi.fhir.org/baseR4")
-FHIR_URL = "http://127.0.0.1:8084/fhir" #For Mimic-iv demo data in localhost
-FHIR_URL = "https://server.fire.ly" #for Firely test server
-
-
-# Auth Config 구성
-# auth_config = AuthConfig(
-#     # 필요한 설정값 채우기
-# )
-
+FHIR_TOKEN_ENDPOINT = os.getenv("FHIR_TOKEN_ENDPOINT", None)
+FHIR_CLIENT_ID = os.getenv("FHIR_CLIENT_ID", None)
+FHIR_CLIENT_SECRET = os.getenv("FHIR_CLIENT_SECRET", None)
+FHIR_GRANT_TYPE = os.getenv("FHIR_GRANT_TYPE", "Client_Credentials")
+FHIR_RESOURCE_VALUE = os.getenv("FHIR_RESOURCE_VALUE", None)
 # 2. Initialize Clients
 # TS의 Server 클래스와 유사하게 상태를 관리합니다.
-fhir_client = FhirClient(FHIR_URL)
+fhir_client = FhirClient(FHIR_URL, FHIR_GRANT_TYPE, FHIR_TOKEN_ENDPOINT, FHIR_CLIENT_ID, FHIR_CLIENT_SECRET, FHIR_RESOURCE_VALUE)
 cache_manager = CacheManager()
 
 # Auth 처리를 위한 간단한 래퍼 (TS 로직 모방)
@@ -52,6 +53,7 @@ async def ensure_auth():
     # TS 코드의 주석 처리된 로직: 
     # access_token = await auth_handler.ensure_valid_token()
     # fhir_client.set_access_token(access_token)
+    
     pass
 
 # 3. Initialize FastMCP Server
