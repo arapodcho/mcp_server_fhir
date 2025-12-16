@@ -12,6 +12,9 @@ from connectors.fhir.fhir_client import FhirClient
 
 # 1. Configuration & Dependencies Initialization
 # TypeScript의 constructor에서 받던 인자들을 환경 변수나 설정에서 가져옵니다.
+MCP_NAME = os.getenv("MCP_NAME", "fhir-mcp")
+MCP_IP = os.getenv("MCP_IP", "0.0.0.0")
+MCP_PORT = int(os.getenv("MCP_PORT", "8052"))
 
 #FHIR_URL = "http://127.0.0.1:8084/fhir" #For Mimic-iv demo data in localhost
 # FHIR_URL = "https://server.fire.ly" #for Firely test server
@@ -53,7 +56,7 @@ async def ensure_auth():
     pass
 
 # 3. Initialize FastMCP Server
-mcp = FastMCP("fhir-mcp", host="0.0.0.0", port=8052)
+mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
 
 # 4. Tool Definitions
 # ToolHandler.ts의 switch-case와 tools.ts의 Schema를 매핑합니다.
