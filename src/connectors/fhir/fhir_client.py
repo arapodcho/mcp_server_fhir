@@ -59,6 +59,7 @@ class FhirClient:
         params = {}
         if args.get('lastName'): params['family'] = args['lastName']
         if args.get('firstName'): params['given'] = args['firstName']
+        if args.get('id'): params['_id'] = args['id']
         if args.get('birthDate'): params['birthdate'] = args['birthDate']
         # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
 

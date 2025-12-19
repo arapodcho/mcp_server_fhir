@@ -63,21 +63,27 @@ mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
 # FastMCP는 함수 시그니처와 Docstring을 통해 Schema를 자동 생성합니다.
 
 @mcp.tool()
-async def find_patient(last_name: str, first_name= None, birth_date=None, gender=None):
+async def find_patient(last_name=None, first_name=None, input_id=None, birth_date=None, gender=None):
     """
-    Search for a patient by demographics.
+    Search for a patient by demographics or ID.
     
     Args:
-        lastName: Family name (required)
-        firstName: Given name (can be None)
-        birthDate: YYYY-MM-DD format (can be None)
-        gender: Patient gender (can be None, otherwise it has to be among "male", "female", "other" and "unknown")
+        last_name: Family name (Optional, but recommended if input_id is missing)
+        first_name: Given name (Optional)
+        input_id: Patient resource ID (Optional, if provided, other fields can be omitted)
+        birth_date: YYYY-MM-DD format (Optional)
+        gender: Patient gender ("male", "female", "other", "unknown") (Optional)
     """
     await ensure_auth()
+    # 최소한의 검색 조건이 있는지 확인 (ID 혹은 성 중 하나는 있어야 함)
+    if not input_id and not last_name:
+        return "Error: You must provide either 'input_id' or 'last_name' to search for a patient."
+    
     # 조립 전 기본 검증 및 정제
     args = {
         "lastName": last_name or "",
         "firstName": first_name or "",
+        "id": input_id or "",
     }
     # birthDate는 YYYY-MM-DD 형식일 때만 포함
     if birth_date and _is_valid_yyyy_mm_dd(birth_date):
