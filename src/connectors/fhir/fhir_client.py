@@ -57,11 +57,13 @@ class FhirClient:
 
     async def find_patient(self, args: Dict[str, Any]):
         params = {}
-        if args.get('lastName'): params['family'] = args['lastName']
-        if args.get('firstName'): params['given'] = args['firstName']
-        if args.get('id'): params['_id'] = args['id']
-        if args.get('birthDate'): params['birthdate'] = args['birthDate']
-        # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
+        if args.get('id'):
+            params['_id'] = args['id']
+        else:
+            if args.get('lastName'): params['family'] = args['lastName']
+            if args.get('firstName'): params['given'] = args['firstName']        
+            if args.get('birthDate'): params['birthdate'] = args['birthDate']
+            # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
 
         response = await self.client.get("/Patient", params=params)
         
@@ -205,10 +207,14 @@ class FhirClient:
         return False
 
     async def get_patient_encounters(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['status'] = args['status']
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
+            if args.get('status'): params['status'] = args['status']
+            if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
+            if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
 
         response = await self.client.get("/Encounter", params=params)
         formatted_text = helper.format_encounters(response.json())

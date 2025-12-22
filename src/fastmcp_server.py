@@ -79,25 +79,27 @@ async def find_patient(last_name=None, first_name=None, input_id=None, birth_dat
     if not input_id and not last_name:
         return "Error: You must provide either 'input_id' or 'last_name' to search for a patient."
     
-    # 조립 전 기본 검증 및 정제
-    args = {
-        "lastName": last_name or "",
-        "firstName": first_name or "",
-        "id": input_id or "",
-    }
-    # birthDate는 YYYY-MM-DD 형식일 때만 포함
-    if birth_date and _is_valid_yyyy_mm_dd(birth_date):
-        args["birthDate"] = birth_date
-    else:
-        args["birthDate"] = None
-    
-    # gender는 허용된 값일 때만 포함
-    allowed_genders = {"male", "female", "other", "unknown"}
-    if gender and gender in allowed_genders:
-        args["gender"] = gender
-    else:
-        args["gender"] = None
-    
+    if input_id is not None:
+        args = {"id": input_id}
+    else:    
+        # 조립 전 기본 검증 및 정제
+        args = {
+            "lastName": last_name or "",
+            "firstName": first_name or "",         
+        }
+        # birthDate는 YYYY-MM-DD 형식일 때만 포함
+        if birth_date and _is_valid_yyyy_mm_dd(birth_date):
+            args["birthDate"] = birth_date
+        else:
+            args["birthDate"] = None
+        
+        # gender는 허용된 값일 때만 포함
+        allowed_genders = {"male", "female", "other", "unknown"}
+        if gender and gender in allowed_genders:
+            args["gender"] = gender
+        else:
+            args["gender"] = None
+        
     # 빈 문자열 제거
     cleaned_args = {k: v for k, v in args.items() if v != ''}
     
@@ -246,36 +248,45 @@ async def search_medication_administrations(patient_id: str, status = None):
     return await fhir_client.get_patient_medication_administrations({k: v for k, v in args.items() if v is not None}) 
 
 @mcp.tool()
-async def get_patient_encounters(patientId: str, dateFrom = None, dateTo = None, status = None):
+async def get_patient_encounters(patient_id=None, input_id=None, dateFrom = None, dateTo = None, status = None):
+# async def get_patient_encounters(patient_id:Optional[str]=None, input_id:Optional[str]=None, dateFrom :Optional[str]= None, dateTo :Optional[str]= None, status :Optional[str]= None):
     """
     Get healthcare encounters/visits for a patient.
 
     Args:
+        patient_id: The FHIR Logical ID of the patient (Optional, but recommended if input_id is missing)
+        input_id: The FHIR Resource ID of the encounter (Optional, if provided, other fields can be omitted)
         dateFrom: YYYY-MM-DD format (can be None)
         dateTo: YYYY-MM-DD format (can be None)
         status: can be None, otherwise it has to be among "planned", "arrived", "in-progress", "finished", and "cancelled"
     """
     await ensure_auth()
-    args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+    if patient_id is None and input_id is None:
+        return "Error: You must provide either patient_id or input_id"
     
-    # dateFrom YYYY-MM-DD 형식일 때만 포함
-    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
-        args["dateFrom"] = dateFrom
+    if input_id is not None:
+        args = {'id': input_id}
     else:
-        args["dateFrom"] = None
+        args = {"patientId": patient_id, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
         
-    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
-        args["dateTo"] = dateTo
-    else:
-        args["dateTo"] = None
-        
-    # status 허용된 값일 때만 포함
-    allowed_status = ["planned", "arrived", "in-progress", "finished", "cancelled"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
-        
+        # dateFrom YYYY-MM-DD 형식일 때만 포함
+        if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+            args["dateFrom"] = dateFrom
+        else:
+            args["dateFrom"] = None
+            
+        if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+            args["dateTo"] = dateTo
+        else:
+            args["dateTo"] = None
+            
+        # status 허용된 값일 때만 포함
+        allowed_status = ["planned", "arrived", "in-progress", "finished", "cancelled"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+            
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()

@@ -2,7 +2,45 @@ import re
 from datetime import datetime
 from typing import Any, List, Dict, Optional, Union
 
+def extract_ref_display(data):
+    results = []
+
+    # 1. 데이터가 딕셔너리인 경우
+    if isinstance(data, dict):
+        # 원하는 키("reference", "display")가 모두 있는지 확인
+        if "reference" in data and "display" in data:
+
+            current_result = {
+                "reference": data["reference"], #resource type과 id로 분리                
+                "display": data["display"],
+                # "resourceType": data["reference"].split("/")[0],
+                # "id": data["reference"].split("/")[1]
+            }
+            reference_split = data["reference"].split("/")
+            if len(reference_split) == 2:
+                current_result["resourceType"] = reference_split[0]
+                current_result["id"] = reference_split[1]
+            
+            results.append(current_result)
+        
+        # 딕셔너리의 내부 값들 중 또 다른 딕셔너리나 리스트가 있을 수 있으므로 재귀 호출
+        for value in data.values():
+            results.extend(extract_ref_display(value))
+
+    # 2. 데이터가 리스트인 경우
+    elif isinstance(data, list):
+        # 리스트의 각 아이템에 대해 다시 함수 호출 (재귀)
+        for item in data:
+            results.extend(extract_ref_display(item))
+
+    return results
+
 # Enhanced Helper Functions
+def get_reference_info(resource: Dict[str, Any]) -> Dict[str, Any]:
+    result_value = {}
+
+    #
+    return result_value
 
 def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> str:
     entries = bundle.get('entry', [])
@@ -267,6 +305,12 @@ def format_encounters(bundle: Dict[str, Any]) -> str:
         reason_display = 'Unknown reason for encounter'
         if reason_list:
             reason_display = reason_list[0].get('coding', [{}])[0].get('display') or reason_list[0].get('text') or reason_display
+        #for Reference (patient, participant (or P), organization)
+        patient = encounter.get('patient', {})
+        participant = encounter.get('participant', [{}])
+        organization = encounter.get('organization', {})
+
+        reference_result = extract_ref_display(encounter)
 
         item = (
             f"- {start}:{start_time} ~ {end}:{end_time}\n"
