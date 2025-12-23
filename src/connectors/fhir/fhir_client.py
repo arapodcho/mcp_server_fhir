@@ -169,13 +169,19 @@ class FhirClient:
         return md_text
 
     async def get_patient_conditions(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['clinical-status'] = args['status']
-        if args.get('onsetDate'): params['onset-date'] = args['onsetDate']
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            if args.get('patientId'): params['patient'] = str(args['patientId'])                            
+            if args.get('encounter_id'): params['encounter'] = str(args['encounter_id'])
+            if args.get('status'): params['clinical-status'] = args['status']
+            if args.get('onsetDate'): params['onset-date'] = args['onsetDate']
 
         response = await self.client.get("/Condition", params=params)
-        formatted_text = helper.format_conditions(response.json())
-        return self._format_response_text(formatted_text)
+        formatted_result = helper.format_conditions(response.json())
+        md_text = self._dicts_to_markdown_table(formatted_result)
+        return md_text
 
     async def _get_medication_info(self, input: list[Dict[str, Any]]):
         result_value = copy.deepcopy(input)

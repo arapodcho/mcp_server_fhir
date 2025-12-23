@@ -2,6 +2,35 @@ import re
 from datetime import datetime
 from typing import Any, List, Dict, Optional, Union
 
+def convert_fhir_to_local_str(fhir_time_str: str) -> str:
+    """
+    FHIR 날짜/시간을 입력받아 현재 로컬 타임존 기준으로 변환하여 출력합니다.
+    - 'T' 포함 시: 로컬 타임존으로 변환 후 YYYY-MM-DD HH:MM:SS
+    - 'T' 미포함 시: YYYY-MM-DD (날짜만 출력)
+    """
+    # 1. 안전한 입력을 위한 유효성 검사
+    if not isinstance(fhir_time_str, str) or "-" not in fhir_time_str:
+        return "Invalid Format"
+
+    try:
+        if "T" in fhir_time_str:
+            # 2. DateTime 처리: ISO 8601 파싱 (타임존 정보 포함)
+            dt_obj = datetime.fromisoformat(fhir_time_str)
+            
+            # 3. 로컬 타임존으로 변환 (astimezone에 인자 없으면 시스템 설정 기준)
+            local_dt = dt_obj.astimezone()
+            
+            return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+        
+        else:
+            # 4. Date 처리 (T가 없는 경우): 날짜만 파싱하여 형식 통일
+            # FHIR date는 보통 'YYYY-MM-DD' 형식이므로 문자열 슬라이싱만으로도 충분합니다.
+            dt_obj = datetime.strptime(fhir_time_str[:10], "%Y-%m-%d")
+            return dt_obj.strftime("%Y-%m-%d")
+
+    except ValueError:
+        return "Invalid Format"
+
 def extract_ref_display(data):
     results = []
 
@@ -29,6 +58,14 @@ def extract_ref_display(data):
             results.extend(extract_ref_display(item))
 
     return results
+
+def apply_reference_info(item: Dict[str, Any], reference_result: List[Dict[str, Any]]) -> None:
+    """
+    reference_result의 정보를 item 딕셔너리에 추가합니다.
+    """
+    for current_reference in reference_result:
+        item[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']
+        item[f"RefID_{current_reference['resourceType']}"] = current_reference['id']
 
 # Enhanced Helper Functions
 def get_reference_info(resource: Dict[str, Any]) -> Dict[str, Any]:
@@ -82,9 +119,7 @@ def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[
         current_result['Gender'] = patient.get('gender')
         current_result['Address'] = format_address(address)
         current_result['Phone'] = phone
-        for current_reference in reference_result:
-            current_result[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
-            current_result[f"RefID_{current_reference['resourceType']}"] = current_reference['id'] 
+        apply_reference_info(current_result, reference_result)
         results.append(current_result)
 
     return results
@@ -293,10 +328,12 @@ def format_encounters(bundle: Dict[str, Any]):
 
     for entry in entries:
         encounter = entry.get('resource', {})
-        start = encounter.get('period', {}).get('start', '').split('T')[0] or 'unknown date'
-        start_time = encounter.get('period', {}).get('start', '').split('T')[-1] or ''
-        end = encounter.get('period', {}).get('end', '').split('T')[0] or 'unknown date'
-        end_time = encounter.get('period', {}).get('end', '').split('T')[-1] or ''
+        period_str = 'unknown period'
+        if 'period' in encounter:
+            start = convert_fhir_to_local_str(encounter['period'].get('start', ''))
+            end = convert_fhir_to_local_str(encounter['period'].get('end', ''))
+            period_str = f"{start} to {end}"
+        
         #"start"와 "end" 를 period로 정리해서 출력
         type_list = encounter.get('type', [{}])
         type_display = type_list[0].get('coding', [{}])[0].get('display') if type_list else 'Unknown encounter type'
@@ -309,16 +346,13 @@ def format_encounters(bundle: Dict[str, Any]):
         reference_result = extract_ref_display(encounter)
         
         current_result = {}
-        current_result['start_time'] = f"{start}:{start_time}"
-        current_result['end_time'] = f"{end}:{end_time}"        
+        current_result['period'] = period_str        
         current_result['type'] = type_display
         current_result['reason'] = reason_display
         current_result['status'] = encounter.get('status')
         current_result['class'] = class_display
         
-        for current_reference in reference_result:
-            current_result[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
-            current_result[f"RefID_{current_reference['resourceType']}"] = current_reference['id']
+        apply_reference_info(current_result, reference_result)
         output.append(current_result)
         
     return output
@@ -498,14 +532,23 @@ def format_recent_health_metrics(bundle: Dict[str, Any]):
         if obs_type not in metrics:
             val_q = obs.get('valueQuantity', {})
             value_str = f"{val_q.get('value', 'No value')} {val_q.get('unit', '')}"
-            date_str = obs.get('effectiveDateTime', '').split('T')[0] or 'unknown date'
+            date_str = "unknown"
+            if obs.get('effectiveDateTime'):
+                date_str = convert_fhir_to_local_str(obs['effectiveDateTime'])
+            elif obs.get('effectivePeriod'):
+                period = obs.get('effectivePeriod', {})
+                if 'start' in period and 'end' in period:
+                    start = convert_fhir_to_local_str(period.get('start'))
+                    end = convert_fhir_to_local_str(period.get('end'))
+                    date_str = f"{start} to {end}"                                            
+            
             reference_result = extract_ref_display(obs)
             metrics[obs_type] = {
                 'category': obs_category,
                 'type': obs_type,
                 'status': obs.get('status', 'unknown'),
                 'value': value_str,
-                'date': date_str,
+                'date_time': date_str,
                 'references': reference_result                
             }
 
@@ -516,10 +559,8 @@ def format_recent_health_metrics(bundle: Dict[str, Any]):
         current_output['Type'] = data['type']
         current_output['Status'] = data['status']
         current_output['Value'] = data['value']
-        current_output['Date'] = data['date']
-        for current_reference in data['references']:
-            current_output[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
-            current_output[f"RefID_{current_reference['resourceType']}"] = current_reference['id']
+        current_output['Date'] = data['date_time']
+        apply_reference_info(current_output, data['references'])
         output.append(current_output)
         
     return output
@@ -627,38 +668,40 @@ def calculate_age(birth_date_str: str) -> int:
     return age
 
 
-def format_conditions(bundle: Dict[str, Any]) -> str:
+def format_conditions(bundle: Dict[str, Any]):
+    lines = []
     # Supports both Bundle (dict with entry) or List of entries if passed directly
     entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
     if not entries:
-        return "No active conditions"
+        return lines
 
-    lines = []
     for entry in entries:
         condition = entry.get('resource', {})
         coding = condition.get('code', {}).get('coding', [{}])[0]
-        name = coding.get('display') or condition.get('code', {}).get('text') or 'Unknown Condition'
-        code = coding.get('code', 'Unknown')
-        system = coding.get('system', 'Unknown')
+        name = coding.get('display') or condition.get('code', {}).get('text') or 'Unknown Condition'        
         category = condition.get('category', [{}])[0].get('coding', [{}])[0].get('code') or 'Unknown Category'
-        onset_str = ''
+        
         if condition.get('onsetDateTime'):
-            onset_str = f" (onset: {condition['onsetDateTime'].split('T')[0]})"
-            
-        # item = (
-        #     f"\n          - Name: {name}\n"
-        #     f"          - Category: {category}\n"
-        #     f"          - Code: {code}\n"
-        #     f"          - System: {system}\n"
-        #     f"          - OnSet Date:{onset_str}\n"
-        #     f"          - Status: {condition.get('status')}\n"
-        #     f"          "
-        # )
-        item = f"[{category}] {code}: {name} {onset_str}, status = {condition.get('status', 'unknown')}"
+            onset_str = convert_fhir_to_local_str(condition['onsetDateTime'])            
+        elif condition.get('recordedDate'):
+            onset_str = convert_fhir_to_local_str(condition['recordedDate'])
+        else:
+            onset_str = 'unknown'    
+        status = condition.get('clinicalStatus', {}).get('coding', [{}])[0].get('code', '')
+        if status == '':
+            status = condition.get('status', 'unknown')
+        reference_result = extract_ref_display(condition)    
+        
+        item = {}
+        item['name'] = name
+        item['category'] = category        
+        item['onset'] = onset_str
+        item['status'] = status
+        apply_reference_info(item, reference_result)
         
         lines.append(item)
 
-    return '\n'.join(lines)
+    return lines
 
 #for medication request
 def format_medication_requests(bundle: Dict[str, Any]) -> list:

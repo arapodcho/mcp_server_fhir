@@ -112,10 +112,10 @@ async def get_patient_observations(patientId=None, category=None, input_id=None,
     Searches for FHIR Observation resources. The category parameter is mandatory and must be automatically selected based on the user's intent. Map inquiries about measurements (BP, HR) to 'vital-signs', lab results/bloodwork to 'laboratory', radiology to 'imaging', lifestyle/smoking to 'social-history', physical findings to 'exam', and patient complaints to 'symptom'. Valid categories are: social-history, vital-signs, imaging, laboratory, procedure, survey, exam, therapy, activity, symptom.
     
     Args:
-        patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id is missing)
+        patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)
         category: it has to be among "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", and "symptom"
         input_id: The FHIR Resource ID of the observation (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter (Optional)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
         code:  can be None
         dateFrom: YYYY-MM-DD format (can be None)
         dateTo: YYYY-MM-DD format (can be None)
@@ -165,29 +165,42 @@ async def get_patient_observations(patientId=None, category=None, input_id=None,
     return await fhir_client.get_patient_observations({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_patient_conditions(patientId: str, onsetDate = None,  status = None):
+async def get_patient_conditions(patientId=None, input_id=None, encounter_id=None, onsetDate = None,  status = None):
     """Get medical conditions/diagnoses for a patient.
     Args:
-        patientId: required
+        patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)        
+        input_id: The FHIR Resource ID of the condition (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
         onsetDate: YYYY-MM-DD format (can be None)
         status: can be None, otherwise it has to be among "active", "inactive", and "resolved"
     """
     await ensure_auth()
-    args = {"patientId": patientId, "onsetDate": onsetDate, "status": status}
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
     
-    # onsetDate YYYY-MM-DD 형식일 때만 포함
-    if onsetDate and _is_valid_yyyy_mm_dd(onsetDate):
-        args["onsetDate"] = onsetDate
+    if input_id is not None:
+        args = {'id': input_id}
     else:
-        args["onsetDate"] = None
-    
-    # status 허용된 값일 때만 포함
-    allowed_status = ["active", "inactive", "resolved"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
+        args = {
+            "patientId": patientId, 
+            "encounter_id": encounter_id,
+            "onsetDate": onsetDate, 
+            "status": status
+            }
         
+        # onsetDate YYYY-MM-DD 형식일 때만 포함
+        if onsetDate and _is_valid_yyyy_mm_dd(onsetDate):
+            args["onsetDate"] = onsetDate
+        else:
+            args["onsetDate"] = None
+        
+        # status 허용된 값일 때만 포함
+        allowed_status = ["active", "inactive", "resolved"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+            
     return await fhir_client.get_patient_conditions({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
