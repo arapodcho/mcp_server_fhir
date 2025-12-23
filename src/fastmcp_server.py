@@ -106,53 +106,62 @@ async def find_patient(last_name=None, first_name=None, input_id=None, birth_dat
     return await fhir_client.find_patient(cleaned_args)
 
 @mcp.tool()
-async def get_patient_observations(patientId: str, category, code = None, dateFrom = None, dateTo = None, status = None):
+async def get_patient_observations(patientId=None, category=None, input_id=None, encounter_id=None, code = None, dateFrom = None, dateTo = None, status = None):
     """
     Get observations (vitals, labs) for a patient.        
     Searches for FHIR Observation resources. The category parameter is mandatory and must be automatically selected based on the user's intent. Map inquiries about measurements (BP, HR) to 'vital-signs', lab results/bloodwork to 'laboratory', radiology to 'imaging', lifestyle/smoking to 'social-history', physical findings to 'exam', and patient complaints to 'symptom'. Valid categories are: social-history, vital-signs, imaging, laboratory, procedure, survey, exam, therapy, activity, symptom.
     
     Args:
-        patientId: required
-        category: required and it has to be among "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", and "symptom"
+        patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id is missing)
+        category: it has to be among "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", and "symptom"
+        input_id: The FHIR Resource ID of the observation (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional)
         code:  can be None
         dateFrom: YYYY-MM-DD format (can be None)
         dateTo: YYYY-MM-DD format (can be None)
         status: can be None, otherwise it has to be among "registered", "preliminary", "final", "amended", "corrected", and "cancelled"
     """
     await ensure_auth()
-    args = {
-        "patientId": patientId,
-        "category": category,
-        "code": code,
-        "dateFrom": dateFrom,
-        "dateTo": dateTo,
-        "status": status
-    }
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
     
-    allowed_category = ["social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", "symptom"]
-    if category and category in allowed_category:
-        args["category"] = category
+    if input_id is not None:
+        args = {'id': input_id}
     else:
-        args["category"] = None
+        args = {
+            "patientId": patientId,
+            "category": category,        
+            "encounter_id": encounter_id,
+            "code": code,
+            "dateFrom": dateFrom,
+            "dateTo": dateTo,
+            "status": status
+        }
         
-    # dateFrom YYYY-MM-DD 형식일 때만 포함
-    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
-        args["dateFrom"] = dateFrom
-    else:
-        args["dateFrom"] = None
+        allowed_category = ["social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", "symptom"]
+        if category and category in allowed_category:
+            args["category"] = category
+        else:
+            args["category"] = None
+            
+        # dateFrom YYYY-MM-DD 형식일 때만 포함
+        if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+            args["dateFrom"] = dateFrom
+        else:
+            args["dateFrom"] = None
+            
+        if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+            args["dateTo"] = dateTo
+        else:
+            args["dateTo"] = None
+            
+        # status 허용된 값일 때만 포함
+        allowed_status = ["registered", "preliminary", "final", "amended", "corrected", "cancelled"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
         
-    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
-        args["dateTo"] = dateTo
-    else:
-        args["dateTo"] = None
-        
-    # status 허용된 값일 때만 포함
-    allowed_status = ["registered", "preliminary", "final", "amended", "corrected", "cancelled"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
-    
     return await fhir_client.get_patient_observations({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()

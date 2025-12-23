@@ -484,12 +484,12 @@ def format_preventive_procedures(bundle: Dict[str, Any]) -> str:
     return '\n'.join(lines)
 
 
-def format_recent_health_metrics(bundle: Dict[str, Any]) -> str:
+def format_recent_health_metrics(bundle: Dict[str, Any]):
     entries = bundle.get('entry', [])
     if not entries:
         return "No recent health metrics available"
 
-    metrics: Dict[str, Dict[str, str]] = {}
+    metrics: Dict[str, Dict[str, Any]] = {}
 
     for entry in entries:
         obs = entry.get('resource', {})
@@ -499,19 +499,30 @@ def format_recent_health_metrics(bundle: Dict[str, Any]) -> str:
             val_q = obs.get('valueQuantity', {})
             value_str = f"{val_q.get('value', 'No value')} {val_q.get('unit', '')}"
             date_str = obs.get('effectiveDateTime', '').split('T')[0] or 'unknown date'
-            
+            reference_result = extract_ref_display(obs)
             metrics[obs_type] = {
                 'category': obs_category,
+                'type': obs_type,
                 'status': obs.get('status', 'unknown'),
                 'value': value_str,
-                'date': date_str
+                'date': date_str,
+                'references': reference_result                
             }
 
     output = []
     for type_name, data in metrics.items():
-        output.append(f"[{data['category']}] {type_name}: {data['value']} ({data['date']}), status = {data['status']}")
-
-    return '\n'.join(output)
+        current_output = {}
+        current_output['Category'] = data['category']
+        current_output['Type'] = data['type']
+        current_output['Status'] = data['status']
+        current_output['Value'] = data['value']
+        current_output['Date'] = data['date']
+        for current_reference in data['references']:
+            current_output[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
+            current_output[f"RefID_{current_reference['resourceType']}"] = current_reference['id']
+        output.append(current_output)
+        
+    return output
 
 
 def format_chronic_conditions(conditions: List[Dict[str, Any]]) -> str:
