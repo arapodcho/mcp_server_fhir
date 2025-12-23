@@ -290,33 +290,34 @@ def format_immunizations(bundle: Dict[str, Any]) -> str:
     return '\n'.join(output)
 
 
-def format_procedures(bundle: Dict[str, Any]) -> str:
+def format_procedures(bundle: Dict[str, Any]):
+    output = []
+    
     entries = bundle.get('entry', [])
     if not entries:
-        return "No procedures found"
+        return output
 
-    output = []
     for entry in entries:
         procedure = entry.get('resource', {})
         proc_display = procedure.get('code', {}).get('coding', [{}])[0].get('display') or 'Unknown procedure'
         category = procedure.get('category', {}).get('coding', [{}])[0].get('code') or 'Unknown category'
-        period = procedure.get('performedPeriod', {})
-        start = period.get('start', '').split('T')[0] or 'unknown date'
-        start_time = period.get('start', '').split('T')[-1] or ''
-        end = period.get('end', '').split('T')[0] or 'unknown date'
-        end_time = period.get('end', '').split('T')[-1] or ''
+        Status = procedure.get('status') or 'unknown status'
+        period = procedure.get('performedPeriod')
+        period_str = 'unknown'
+        if period:
+            start = convert_fhir_to_local_str(period.get('start', ''))
+            end = convert_fhir_to_local_str(period.get('end', ''))
+            period_str = f"{start} to {end}"
+        reference_result = extract_ref_display(procedure)
+        current_result = {}
+        current_result['Procedure'] = proc_display
+        current_result['Category'] = category
+        current_result['Status'] = Status
+        current_result['Period'] = period_str
+        apply_reference_info(current_result, reference_result)
+        output.append(current_result)
         
-        item = (
-            f"\n        - {proc_display}\n"
-            f"        - Start: {start}:{start_time}\n"
-            f"        - End: {end}:{end_time}\n"
-            f"        - Status: {procedure.get('status')}\n"
-            f"        - Category: {category}\n"            
-            f"        "
-        )
-        output.append(item)
-
-    return '\n'.join(output)
+    return output
 
 
 def format_encounters(bundle: Dict[str, Any]):

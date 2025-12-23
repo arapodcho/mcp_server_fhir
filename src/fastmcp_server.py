@@ -312,36 +312,51 @@ async def get_patient_encounters(patient_id=None, input_id=None, dateFrom = None
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_patient_procedures(patientId: str, dateFrom = None, dateTo = None, status = None):
+async def get_patient_procedures(patientId=None, input_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
     """
     Get procedures performed on a patient.
         
     Args:
+    patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)        
+        input_id: The FHIR Resource ID of the procedure (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
         dateFrom: YYYY-MM-DD format (can be None)
         dateTo: YYYY-MM-DD format (can be None)
         status: can be None, otherwise it has to be among "preparation", "in-progress", "completed", and "entered-in-error""    
     """
     await ensure_auth()
-    args = {"patientId": patientId, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
     
-    # dateFrom YYYY-MM-DD 형식일 때만 포함
-    if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
-        args["dateFrom"] = dateFrom
-    else:
-        args["dateFrom"] = None
+    if input_id is not None:
+        args = {'id': input_id}
+    else:        
+        args = {
+            "patientId": patientId, 
+            "encounter_id": encounter_id,
+            "status": status, 
+            "dateFrom": dateFrom, 
+            "dateTo": dateTo
+            }
         
-    if dateTo and _is_valid_yyyy_mm_dd(dateTo):
-        args["dateTo"] = dateTo
-    else:
-        args["dateTo"] = None
-        
-    # status 허용된 값일 때만 포함
-    allowed_status = ["preparation", "in-progress", "completed", "entered-in-error"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
-        
+        # dateFrom YYYY-MM-DD 형식일 때만 포함
+        if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+            args["dateFrom"] = dateFrom
+        else:
+            args["dateFrom"] = None
+            
+        if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+            args["dateTo"] = dateTo
+        else:
+            args["dateTo"] = None
+            
+        # status 허용된 값일 때만 포함
+        allowed_status = ["preparation", "in-progress", "completed", "entered-in-error"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+            
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()

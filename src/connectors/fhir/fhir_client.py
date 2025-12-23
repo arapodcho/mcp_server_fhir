@@ -129,8 +129,19 @@ class FhirClient:
         if not data_list or not isinstance(data_list, list):
             return "No matching records found."
 
-        # 1. 헤더 추출 (첫 번째 딕셔너리의 키 기준)
-        headers = data_list[0].keys()
+        # 1. 헤더 추출 (첫 번째 딕셔너리의 키 기준) -> 전체 딕셔너리를 확인해서, 모든 key를 헤더로 만든다.
+        header_list = []
+        header_seen = set()
+        for row in data_list:
+            if not isinstance(row, dict):
+                continue
+            for key in row.keys():
+                if key not in header_seen:
+                    header_seen.add(key)
+                    header_list.append(key)
+        if not header_list:
+            return "No matching records found."
+        headers = header_list
         
         # 2. 마크다운 표의 헤더와 구분선 생성
         header_row = "| " + " | ".join(headers) + " |"
@@ -139,7 +150,10 @@ class FhirClient:
         # 3. 데이터 행 생성
         body_rows = []
         for data in data_list:
+            if not isinstance(data, dict):
+                continue
             # 각 값을 문자열로 변환하고, 줄바꿈이 있다면 제거하여 표 깨짐 방지
+            # 헤더의 값이 없으면, 빈 문자열로 채운다.
             row_values = [str(data.get(h, "")).replace("\n", " ") for h in headers]
             body_rows.append("| " + " | ".join(row_values) + " |")
         
@@ -262,14 +276,20 @@ class FhirClient:
         return self._format_response_text(formatted_text)
 
     async def get_patient_procedures(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['status'] = args['status']
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            if args.get('patientId'): params['patient'] = str(args['patientId'])                            
+            if args.get('encounter_id'): params['encounter'] = str(args['encounter_id'])                    
+            if args.get('status'): params['status'] = args['status']
+            if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
+            if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
 
         response = await self.client.get("/Procedure", params=params)
-        formatted_text = helper.format_procedures(response.json())
-        return self._format_response_text(formatted_text)
+        format_result = helper.format_procedures(response.json())
+        md_text = self._dicts_to_markdown_table(format_result)
+        return md_text
 
     async def get_patient_care_team(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
