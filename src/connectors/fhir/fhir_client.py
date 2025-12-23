@@ -66,14 +66,9 @@ class FhirClient:
             # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
 
         response = await self.client.get("/Patient", params=params)
-        
-        # Helper를 사용하여 검색 결과 포맷팅
-        formatted_text = helper.format_patient_search_results(response.json(), args)
-        
-        #입력 값과 matching
-        
-        # Helper가 "No patients found..." 메시지도 처리하므로 그대로 반환
-        return self._format_response_text(formatted_text)
+        formatted_result = helper.format_patient_search_results(response.json(), args)
+        mk_table = self._dicts_to_markdown_table(formatted_result)
+        return mk_table
 
     def handle_error(self, error: Any):
         if isinstance(error, httpx.HTTPStatusError) or isinstance(error, httpx.RequestError):
@@ -126,6 +121,30 @@ class FhirClient:
                 "text": json.dumps(data, indent=2)
             }]
         }
+
+    def _dicts_to_markdown_table(self, data_list):
+        """
+        딕셔너리 리스트를 마크다운 표 형식의 문자열로 변환합니다.
+        """
+        if not data_list or not isinstance(data_list, list):
+            return "No matching records found."
+
+        # 1. 헤더 추출 (첫 번째 딕셔너리의 키 기준)
+        headers = data_list[0].keys()
+        
+        # 2. 마크다운 표의 헤더와 구분선 생성
+        header_row = "| " + " | ".join(headers) + " |"
+        separator_row = "| " + " | ".join(["---"] * len(headers)) + " |"
+        
+        # 3. 데이터 행 생성
+        body_rows = []
+        for data in data_list:
+            # 각 값을 문자열로 변환하고, 줄바꿈이 있다면 제거하여 표 깨짐 방지
+            row_values = [str(data.get(h, "")).replace("\n", " ") for h in headers]
+            body_rows.append("| " + " | ".join(row_values) + " |")
+        
+        # 4. 전체 합치기
+        return "\n".join([header_row, separator_row] + body_rows)
     
     async def get_patient_observations(self, args: Dict[str, Any]):
         params = {
@@ -211,14 +230,15 @@ class FhirClient:
         if args.get('id'):
             params['_id'] = args['id']        
         else:
-            params = {'patient': str(args['patientId'])}
+            if args.get('patientId'): params['patient'] = args['patientId']
             if args.get('status'): params['status'] = args['status']
             if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
             if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
 
         response = await self.client.get("/Encounter", params=params)
-        formatted_text = helper.format_encounters(response.json())
-        return self._format_response_text(formatted_text)
+        formatted_result = helper.format_encounters(response.json())
+        mk_table = self._dicts_to_markdown_table(formatted_result)
+        return mk_table
 
     async def get_patient_allergies(self, args: Dict[str, Any]):
         params = {'patient': args['patientId']}

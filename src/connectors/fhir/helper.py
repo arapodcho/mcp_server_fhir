@@ -7,21 +7,16 @@ def extract_ref_display(data):
 
     # 1. 데이터가 딕셔너리인 경우
     if isinstance(data, dict):
-        # 원하는 키("reference", "display")가 모두 있는지 확인
-        if "reference" in data and "display" in data:
-
-            current_result = {
-                "reference": data["reference"], #resource type과 id로 분리                
-                "display": data["display"],
-                # "resourceType": data["reference"].split("/")[0],
-                # "id": data["reference"].split("/")[1]
-            }
+        # 원하는 키("reference")가 있는지 확인
+        if "reference" in data :
             reference_split = data["reference"].split("/")
-            if len(reference_split) == 2:
-                current_result["resourceType"] = reference_split[0]
-                current_result["id"] = reference_split[1]
-            
-            results.append(current_result)
+            if len(reference_split) == 2:                
+                current_result = {
+                    "display": data.get("display", ""),
+                    "resourceType": data["reference"].split("/")[0],
+                    "id": data["reference"].split("/")[1]
+                }                   
+                results.append(current_result)
         
         # 딕셔너리의 내부 값들 중 또 다른 딕셔너리나 리스트가 있을 수 있으므로 재귀 호출
         for value in data.values():
@@ -42,12 +37,13 @@ def get_reference_info(resource: Dict[str, Any]) -> Dict[str, Any]:
     #
     return result_value
 
-def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> str:
+def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[str, Any]] = None):
+    results = []
+
     entries = bundle.get('entry', [])
     if not entries:
-        return "No patients found matching search criteria"
+        return results
 
-    results = []
     for entry in entries:
         patient = entry.get('resource', {})
         name_list = patient.get('name', [{}])
@@ -76,19 +72,22 @@ def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[
             if params.get('gender') and params.get('gender') != 'unknown':
                 if patient.get('gender').lower() != params['gender'].lower():
                     continue
-                
-        formatted_str = (
-            f"Patient ID: {patient.get('id')}\n"
-            f"                Name: {name.get('family')}, {given_name}\n"
-            f"                DOB: {patient.get('birthDate')}\n"
-            f"                Gender: {patient.get('gender')}\n"
-            f"                Address: {format_address(address)}\n"
-            f"                Phone: {phone}\n"
-            f"                -----------------"
-        )
-        results.append(formatted_str)
+        
+        reference_result = extract_ref_display(patient)        
+        
+        current_result = {}
+        current_result['PatientID'] = patient.get('id')
+        current_result['Name'] = f"{name.get('family')}, {given_name}"
+        current_result['DateOfBirth'] = patient.get('birthDate')
+        current_result['Gender'] = patient.get('gender')
+        current_result['Address'] = format_address(address)
+        current_result['Phone'] = phone
+        for current_reference in reference_result:
+            current_result[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
+            current_result[f"RefID_{current_reference['resourceType']}"] = current_reference['id'] 
+        results.append(current_result)
 
-    return '\n\n'.join(results)
+    return results
 
 
 def format_vital_signs(bundle: Dict[str, Any]) -> str:
@@ -285,12 +284,13 @@ def format_procedures(bundle: Dict[str, Any]) -> str:
     return '\n'.join(output)
 
 
-def format_encounters(bundle: Dict[str, Any]) -> str:
+def format_encounters(bundle: Dict[str, Any]):
+    output = []
+    
     entries = bundle.get('entry', [])
     if not entries:
-        return "No encounters found"
+        return output
 
-    output = []
     for entry in entries:
         encounter = entry.get('resource', {})
         start = encounter.get('period', {}).get('start', '').split('T')[0] or 'unknown date'
@@ -305,24 +305,23 @@ def format_encounters(bundle: Dict[str, Any]) -> str:
         reason_display = 'Unknown reason for encounter'
         if reason_list:
             reason_display = reason_list[0].get('coding', [{}])[0].get('display') or reason_list[0].get('text') or reason_display
-        #for Reference (patient, participant (or P), organization)
-        patient = encounter.get('patient', {})
-        participant = encounter.get('participant', [{}])
-        organization = encounter.get('organization', {})
-
-        reference_result = extract_ref_display(encounter)
-
-        item = (
-            f"- {start}:{start_time} ~ {end}:{end_time}\n"
-            f"              - {type_display}\n"
-            f"              - {reason_display}\n"
-            f"              - {encounter.get('status')}\n"
-            f"              - {class_display}\n"
-            f"              "
-        )
-        output.append(item)
         
-    return '\n'.join(output)
+        reference_result = extract_ref_display(encounter)
+        
+        current_result = {}
+        current_result['start_time'] = f"{start}:{start_time}"
+        current_result['end_time'] = f"{end}:{end_time}"        
+        current_result['type'] = type_display
+        current_result['reason'] = reason_display
+        current_result['status'] = encounter.get('status')
+        current_result['class'] = class_display
+        
+        for current_reference in reference_result:
+            current_result[f"RefDisplay_{current_reference['resourceType']}"] = current_reference['display']                        
+            current_result[f"RefID_{current_reference['resourceType']}"] = current_reference['id']
+        output.append(current_result)
+        
+    return output
 
 
 def format_appointments(bundle: Dict[str, Any]) -> str:
