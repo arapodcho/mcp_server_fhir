@@ -10,7 +10,7 @@ def convert_fhir_to_local_str(fhir_time_str: str) -> str:
     """
     # 1. 안전한 입력을 위한 유효성 검사
     if not isinstance(fhir_time_str, str) or "-" not in fhir_time_str:
-        return "Invalid Format"
+        return fhir_time_str
 
     try:
         if "T" in fhir_time_str:
@@ -29,7 +29,7 @@ def convert_fhir_to_local_str(fhir_time_str: str) -> str:
             return dt_obj.strftime("%Y-%m-%d")
 
     except ValueError:
-        return "Invalid Format"
+        return fhir_time_str
 
 def extract_ref_display(data):
     results = []
@@ -822,7 +822,9 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
         valid_str = ''
         if valid_start != '' and valid_end != '':
             valid_str = f"{convert_fhir_to_local_str(valid_start)} to {convert_fhir_to_local_str(valid_end)}"
-        
+        elif valid_start != '':
+            valid_str = f"From {convert_fhir_to_local_str(valid_start)}"
+            
         reference_result = extract_ref_display(med)   
         item = {}
         item['medication'] = medication
@@ -862,16 +864,30 @@ def format_medication_statement(bundle: Dict[str, Any]) -> list:
         med = entry.get('resource', {})               
         status = med.get('status', 'unknown')
         
-        medication = med.get('medicationCodeableConcept', {}).get('text', {}) or 'Unknown Medication'
+        medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
             medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
         
         dosage = med.get('dosage', [{}])[0].get('text', '')
-                
+        
+        valid_start = med.get('effectivePeriod', {}).get('start', '')
+        valid_end = med.get('effectivePeriod', {}).get('end', '')
+
+        valid_str = ''
+        if valid_start != '' and valid_end != '':
+            valid_str = f"{convert_fhir_to_local_str(valid_start)} to {convert_fhir_to_local_str(valid_end)}"
+        elif valid_start != '':
+            valid_str = f"From {convert_fhir_to_local_str(valid_start)}"
+              
+        reference_result = extract_ref_display(med) 
         item = {}
         item['medication'] = medication
         item['status'] = status                
         item['dosage'] = dosage        
+        item['effective_period'] = valid_str
+        apply_reference_info(item, reference_result)
         lines.append(item)
 
     return lines

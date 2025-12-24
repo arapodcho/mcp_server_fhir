@@ -345,7 +345,7 @@ async def get_patient_encounters(patient_id=None, input_id=None, dateFrom = None
     return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_patient_procedures(patientId=None, input_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
+async def get_patient_procedures(patientId = None, input_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
     """
     Get procedures performed on a patient.
         
@@ -393,10 +393,24 @@ async def get_patient_procedures(patientId=None, input_id=None, encounter_id=Non
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_medications_history(patientId: str, includeDiscontinued = None):
-    """Get patient's medication history including changes."""
+async def get_medications_history(patientId=None, input_id=None):
+    """
+    Retrieves a patient's medication history from FHIR resources.
+    
+    This tool fetches MedicationStatement records to provide a chronological view 
+    of medications a patient has taken, is taking, or is intended to take.
+
+    Args:
+        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person.
+        medication_statement_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
+    """
     await ensure_auth()
-    args = {"patientId": patientId, "includeDiscontinued": includeDiscontinued}
+    if patientId is None and input_id is None:
+        return "Error: You must provide either patientId or input_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {"patientId": patientId}
     return await fhir_client.get_medication_history({k: v for k, v in args.items() if v is not None})
 
 # @mcp.tool()

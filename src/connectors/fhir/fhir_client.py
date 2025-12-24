@@ -341,14 +341,19 @@ class FhirClient:
         return self._format_response_text(formatted_text)
 
     async def get_medication_history(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
         
         response = await self.client.get("/MedicationStatement", params=params)        
         formatted_list = helper.format_medication_statement(response.json())
         result_list = await self._get_medication_info(formatted_list)
-        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
-        result_text = '\n'.join(result_list_text)
-        return self._format_response_text(result_text)
+        
+        md_text = self._dicts_to_markdown_table(result_list)
+        
+        return md_text
 
     async def get_patient_lab_results(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
