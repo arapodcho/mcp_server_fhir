@@ -5,10 +5,7 @@ load_dotenv()
 from typing import Optional, Literal
 from mcp.server.fastmcp import FastMCP, Context
 
-# 가정: 커넥터와 유틸리티는 이미 python으로 변환되어 있다고 가정하고 import합니다.
-# 실제 경로에 맞게 수정이 필요할 수 있습니다.
 from connectors.fhir.fhir_client import FhirClient
-# from query_parser import parse_clinician_query # 필요한 경우 import
 
 # 1. Configuration & Dependencies Initialization
 # TypeScript의 constructor에서 받던 인자들을 환경 변수나 설정에서 가져옵니다.
@@ -46,13 +43,7 @@ def _is_valid_yyyy_mm_dd(value: str) -> bool:
 async def ensure_auth():
     global auth_initialized
     if not auth_initialized:
-        # auth_handler.initialize() # 필요한 경우 초기화 로직
         auth_initialized = True
-    
-    # TS 코드의 주석 처리된 로직: 
-    # access_token = await auth_handler.ensure_valid_token()
-    # fhir_client.set_access_token(access_token)
-    
     pass
 
 # 3. Initialize FastMCP Server
@@ -401,8 +392,8 @@ async def get_medications_history(patientId=None, input_id=None):
     of medications a patient has taken, is taking, or is intended to take.
 
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person.
-        medication_statement_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
+        patientId: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person.
+        input_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
     """
     await ensure_auth()
     if patientId is None and input_id is None:
@@ -413,66 +404,26 @@ async def get_medications_history(patientId=None, input_id=None):
         args = {"patientId": patientId}
     return await fhir_client.get_medication_history({k: v for k, v in args.items() if v is not None})
 
-# @mcp.tool()
-# async def get_patient_allergies(patientId: str, status: Optional[Literal["active", "inactive", "resolved"]] = None, type: Optional[Literal["allergy", "intolerance"]] = None, category: Optional[Literal["food", "medication", "environment", "biologic"]] = None):
-#     """Get allergies and intolerances for a patient."""
-#     await ensure_auth()
-#     args = {"patientId": patientId, "status": status, "type": type, "category": category}
-#     return await fhir_client.get_patient_allergies({k: v for k, v in args.items() if v is not None})
+@mcp.tool()
+async def get_diagnostic_report(patientId=None, input_id=None):
+    """
+    Retrieves a patient's diagnostic report from FHIR resources.
+    This tool fetches DiagnosticReport records to provide detailed information
 
-# @mcp.tool()
-# async def get_patient_careplans(patientId: str, category: Optional[str] = None, status: Optional[Literal["draft", "active", "suspended", "completed", "cancelled"]] = None, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-#     """Get care plans for a patient."""
-#     await ensure_auth()
-#     args = {"patientId": patientId, "category": category, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
-#     return await fhir_client.get_patient_care_plans({k: v for k, v in args.items() if v is not None})
+    Args:
+        patientId: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person.
+        input_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
+    """
+    await ensure_auth()
+    if patientId is None and input_id is None:
+        return "Error: You must provide either patientId or input_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {"patientId": patientId}
+    return await fhir_client.get_diagnostic_reports({k: v for k, v in args.items() if v is not None})
 
-# @mcp.tool()
-# async def get_patient_careteam(patientId: str, status: Optional[str] = None):
-#     """Get care team members for a patient."""
-#     await ensure_auth()
-#     args = {"patientId": patientId, "status": status}
-#     return await fhir_client.get_patient_care_team({k: v for k, v in args.items() if v is not None})
 
-# @mcp.tool()
-# async def get_vital_signs(patientId: str, timeframe: Optional[str] = None):
-#     """
-#     Get patient's vital signs history.
-    
-#     Args:
-#         timeframe: e.g., 3m, 6m, 1y, all
-#     """
-#     await ensure_auth()
-#     args = {"patientId": patientId, "timeframe": timeframe}
-#     return await fhir_client.get_patient_vital_signs({k: v for k, v in args.items() if v is not None})
-
-# @mcp.tool()
-# async def get_lab_results(patientId: str, category: Optional[str] = None, timeframe: Optional[str] = None):
-#     """
-#     Get patient's lab results.
-    
-#     Args:
-#         category: e.g., CBC, METABOLIC, LIPIDS, ALL
-#     """
-#     await ensure_auth()
-#     args = {"patientId": patientId, "category": category, "timeframe": timeframe}
-#     return await fhir_client.get_patient_lab_results({k: v for k, v in args.items() if v is not None})
-
-# @mcp.tool()
-# async def get_appointments(patientId: str, dateFrom: Optional[str] = None, dateTo: Optional[str] = None):
-#     """Get patient's Appointments."""
-#     await ensure_auth()
-#     args = {"patientId": patientId, "dateFrom": dateFrom, "dateTo": dateTo}
-#     return await fhir_client.get_patient_appointments({k: v for k, v in args.items() if v is not None})
-
-# @mcp.tool()
-# async def clinical_query(query: str):
-#     """Execute a natural language clinical query."""
-#     await ensure_auth()
-#     # query-parser 로직 필요 (여기서는 mock)
-#     # query_params = await parse_clinician_query(query)
-#     # return await fhir_client.execute_query(query_params)
-#     pass
 
 # 5. Run Server
 if __name__ == "__main__":

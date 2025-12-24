@@ -264,9 +264,6 @@ class FhirClient:
         
         return md_text
     
-    async def get_patient_medication_related_resources(self, args: Dict[str, Any]):
-        
-        return False
 
     async def get_patient_encounters(self, args: Dict[str, Any]):
         params = {}
@@ -283,15 +280,6 @@ class FhirClient:
         mk_table = self._dicts_to_markdown_table(formatted_result)
         return mk_table
 
-    async def get_patient_allergies(self, args: Dict[str, Any]):
-        params = {'patient': args['patientId']}
-        if args.get('status'): params['clinical-status'] = args['status']
-        if args.get('type'): params['type'] = args['type']
-        if args.get('category'): params['category'] = args['category']
-
-        response = await self.client.get("/AllergyIntolerance", params=params)
-        formatted_text = helper.format_allergies(response.json())
-        return self._format_response_text(formatted_text)
 
     async def get_patient_procedures(self, args: Dict[str, Any]):
         params = {}
@@ -309,36 +297,6 @@ class FhirClient:
         md_text = self._dicts_to_markdown_table(format_result)
         return md_text
 
-    async def get_patient_care_team(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['status'] = args['status']
-
-        response = await self.client.get("/CareTeam", params=params)
-        formatted_text = helper.format_care_team(response.json())
-        return self._format_response_text(formatted_text)
-
-    async def get_patient_care_plans(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['status'] = args['status']
-        if args.get('category'): params['category'] = args['category']
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
-        response = await self.client.get("/CarePlan", params=params)
-        formatted_text = helper.format_care_plans(response.json())
-        return self._format_response_text(formatted_text)
-
-    async def get_patient_vital_signs(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
-        # Vital Signs 카테고리 필터 추가 (일반적으로 필요함)
-        params['category'] = 'vital-signs'
-        
-        response = await self.client.get("/Observation", params=params)
-        formatted_text = helper.format_vital_signs(response.json())
-        return self._format_response_text(formatted_text)
 
     async def get_medication_history(self, args: Dict[str, Any]):
         params = {}
@@ -354,120 +312,18 @@ class FhirClient:
         md_text = self._dicts_to_markdown_table(result_list)
         
         return md_text
-
-    async def get_patient_lab_results(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        # Lab results category
-        params['category'] = 'laboratory'
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
-        response = await self.client.get("/Observation", params=params)
-        formatted_text = helper.format_lab_results(response.json())
-        return self._format_response_text(formatted_text)
-
-    async def get_patient_appointments(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('dateFrom'): params.setdefault('date', []).append(f"ge{args['dateFrom']}")
-        if args.get('dateTo'): params.setdefault('date', []).append(f"le{args['dateTo']}")
-
-        response = await self.client.get("/Appointment", params=params)
-        formatted_text = helper.format_appointments(response.json())
-        return self._format_response_text(formatted_text)
-
-    async def get_vital_signs(self, patient_id: str, timeframe: Optional[str] = None):
-        params = {
-            'patient': patient_id,
-            'category': 'vital-signs',
-            '_sort': '-date',
-            '_count': '50'
-        }
-
-        if timeframe:
-            # Helper의 날짜 계산 함수 적용
-            date = helper.calculate_timeframe_date(timeframe)
-            if date:
-                params["date"] = f"ge{date}"
+    
+    
+    async def get_diagnostic_reports(self, args: Dict[str, Any])->str:
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
         
-        response = await self.client.get("/Observation", params=params)
-        return response.json()
-
-    async def get_patient_summary_data(self, patient_id: str):
-        # 여러 요청을 병렬로 실행
-        results = await asyncio.gather(
-            self.get("Patient", patient_id),
-            self.search("Condition", {"patient": patient_id}),
-            self.search("MedicationRequest", {"patient": patient_id}),
-            self.search("AllergyIntolerance", {"patient": patient_id}),
-            self.search("Immunization", {"patient": patient_id}),
-            self.search("Procedure", {"patient": patient_id}),
-            self.search("CarePlan", {"patient": patient_id}),
-            self.get_patient_lab_data(patient_id),
-            self.search("Encounter", {"patient": patient_id}),
-            self.search("Appointment", {"patient": patient_id})
-        )
-
-        data = {
-            "patient": results[0],
-            "conditions": results[1],
-            "medications": results[2],
-            "allergies": results[3],
-            "immunizations": results[4],
-            "procedures": results[5],
-            "carePlans": results[6],
-            "recentLabs": results[7],
-            "encounters": results[8],
-            "appointments": results[9]
-        }
+        response = await self.client.get("/DiagnosticReport", params=params)        
+        formatted_list = helper.format_diagnostic_reports(response.json())
         
-        # 원본 TS는 객체를 반환했으나, 필요시 helper.format_patient_summary(data)를 호출하여 
-        # 텍스트로 변환할 수 있습니다. 여기서는 원본 TS와의 일치를 위해 data를 반환합니다.
-        return data
-
-    # Additional helper functions using internal helpers
-    async def get_patient_condition_data(self, patient_id: str, timeframe: Optional[str] = None):
-        search_params = {
-            "patient": patient_id,
-            "_sort": "date"
-        }
-
-        if timeframe:
-            # Helper 적용
-            date = helper.calculate_timeframe_date(timeframe)
-            if date:
-                search_params["date"] = f"ge{date}"
+        md_text = self._dicts_to_markdown_table(formatted_list)
         
-        return await self.search("Condition", search_params)
-
-    async def get_patient_lab_data(self, patient_id: str, lab_type: Optional[str] = None):
-        search_params = {
-            "patient": patient_id,
-            "category": "laboratory",
-            "_sort": "-date"
-        }
-
-        if lab_type:
-            search_params["code"] = lab_type
-
-        return await self.search("Observation", search_params)
-
-    async def get_patient_care_gaps_data(self, patient_id: str):
-        results = await asyncio.gather(
-            self.get("Patient", patient_id),
-            self.search("Immunization", {"patient": patient_id}),
-            self.search("Procedure", {"patient": patient_id}),
-            self.search("CarePlan", {"patient": patient_id, "status": "active"})
-        )
-
-        return {
-            "patient": results[0],
-            "immunizations": results[1],
-            "procedures": results[2],
-            "carePlans": results[3]
-        }
-
-    # TS 클래스 내에 있던 getRelevantMetrics는 helper.py로 이동했으므로 
-    # 필요하다면 helper.get_relevant_metrics를 직접 사용하도록 유도하거나 
-    # 아래와 같이 래퍼를 둘 수 있습니다.
-    def get_relevant_metrics(self, observations: List[Any], condition: Any) -> List[str]:
-        return helper.get_relevant_metrics(observations, condition)
+        return md_text
