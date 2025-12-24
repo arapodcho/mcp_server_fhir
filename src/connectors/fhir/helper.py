@@ -597,3 +597,47 @@ def format_diagnostic_reports(bundle: Dict[str, Any]) -> list:
         lines.append(item)
 
     return lines
+
+def format_document_references(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        doc = entry.get('resource', {})               
+        status = doc.get('status', '')
+        doc_type = doc.get('type', {}).get('coding', [{}])[0].get('display', '')   
+        if doc_type == '':
+            doc_type = doc.get('type', {}).get('coding', [{}])[0].get('code', '')     
+        category = doc.get('category', [{}])[0].get('coding', [{}])[0].get('display', '')
+        if category == '':
+            category = doc.get('category', [{}])[0].get('coding', [{}])[0].get('code', '')
+            
+        date = doc.get('date', '')
+        if date != '':
+            date = convert_fhir_to_local_str(date)         
+                   
+        title = doc.get('description', '')        
+        author = doc.get('author', [{}])[0].get('display', '')
+        
+        content = doc.get('content', [{}])[0].get('attachment', {})
+        content_title = content.get('title', '')
+        content_url = content.get('url', '')
+        content_type = content.get('contentType', '')
+        content_str = ''
+        if content != {}:
+            content_str = f"Title: {content_title}, URL: {content_url}, Type: {content_type}"
+        
+        reference_result = extract_ref_display(doc) 
+        item = {}
+        item['status'] = status                
+        item['type'] = doc_type        
+        item['date'] = date
+        item['title'] = title         
+        item['author'] = author       
+        item['content'] = content_str
+        apply_reference_info(item, reference_result)
+        lines.append(item)
+
+    return lines

@@ -327,3 +327,18 @@ class FhirClient:
         md_text = self._dicts_to_markdown_table(formatted_list)
         
         return md_text
+    
+    async def get_document_references(self, args: Dict[str, Any])->str:
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
+        
+        response = await self.client.get("/DocumentReference", params=params)        
+        formatted_list = helper.format_document_references(response.json())
+        
+        md_text = self._dicts_to_markdown_table(formatted_list)
+        
+        return md_text
+    
