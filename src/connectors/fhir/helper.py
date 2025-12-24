@@ -2,6 +2,23 @@ import re
 from datetime import datetime
 from typing import Any, List, Dict, Optional, Union
 
+TARGET_FHIR_RESOURCES = [
+    "Patient",
+    "Encounter",
+    "Observation",        
+    "Condition",
+    "Procedure",    
+    "MedicationRequest",
+    "MedicationDispense",
+    "MedicationAdministration",
+    "MedicationStatement",
+    "DiagnosticReport",
+    "DocumentReference",
+    "AllergyIntolerance",
+    "FamilyMemberHistory",
+    "Immunization"
+]
+
 def convert_fhir_to_local_str(fhir_time_str: str) -> str:
     """
     FHIR 날짜/시간을 입력받아 현재 로컬 타임존 기준으로 변환하여 출력합니다.
@@ -36,16 +53,18 @@ def extract_ref_display(data):
 
     # 1. 데이터가 딕셔너리인 경우
     if isinstance(data, dict):
-        # 원하는 키("reference")가 있는지 확인
+        # 원하는 키("reference")가 있는지 확인: tool 로 제작한 FHIR resource 만 해당
         if "reference" in data :
             reference_split = data["reference"].split("/")
             if len(reference_split) == 2:                
-                current_result = {
-                    "display": data.get("display", ""),
-                    "resourceType": data["reference"].split("/")[0],
-                    "id": data["reference"].split("/")[1]
-                }                   
-                results.append(current_result)
+                resource_type = data["reference"].split("/")[0]
+                if resource_type in TARGET_FHIR_RESOURCES:
+                    current_result = {
+                        "display": data.get("display", ""),
+                        "resourceType": resource_type,
+                        "id": data["reference"].split("/")[1]
+                    }                   
+                    results.append(current_result)
         
         # 딕셔너리의 내부 값들 중 또 다른 딕셔너리나 리스트가 있을 수 있으므로 재귀 호출
         for value in data.values():
@@ -59,14 +78,24 @@ def extract_ref_display(data):
 
     return results
 
-def apply_reference_info(item: Dict[str, Any], reference_result: List[Dict[str, Any]]) -> None:
-    """
-    reference_result의 정보를 item 딕셔너리에 추가합니다.
-    """
-    for index, current_reference in enumerate(reference_result):
-        item[f"Ref{index}_Display_{current_reference['resourceType']}"] = current_reference['display']
-        item[f"Ref{index}_ID_{current_reference['resourceType']}"] = current_reference['id']
-
+def apply_reference_info(item: Dict[str, Any], reference_result: List[Dict[str, Any]]) -> None:    
+    for current_reference in reference_result:
+        current_display_key = f"Ref_Display_{current_reference['resourceType']}"
+        if current_display_key in item:            
+            if not isinstance(item[current_display_key], list):                
+                item[current_display_key] = [item[current_display_key]]            
+            item[current_display_key].append(current_reference['display'])
+        else:                
+            item[current_display_key] = current_reference['display']
+        
+        current_id_key = f"Ref_ID_{current_reference['resourceType']}"
+        if current_id_key in item:            
+            if not isinstance(item[current_id_key], list):                
+                item[current_id_key] = [item[current_id_key]]            
+            item[current_id_key].append(current_reference['id'])
+        else:                
+            item[current_id_key] = current_reference['id']
+        
 # Enhanced Helper Functions
 def get_reference_info(resource: Dict[str, Any]) -> Dict[str, Any]:
     result_value = {}
