@@ -722,9 +722,17 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
                 
         status = med.get('status', 'unknown')
         intent = med.get('intent', 'unknown')
-        dateOn = med.get('authoredOn', '').split('T')[0] or 'unknown date'
-        valid_start = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('start', '').split('T')[0] or 'unknown'
-        valid_end = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('end', '').split('T')[0] or 'unknown'
+        dateOn = 'unknown date'        
+        if med.get('authoredOn'):
+            dateOn = convert_fhir_to_local_str(med.get('authoredOn'))
+                
+        valid_start = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('start', '')
+        valid_end = med.get('dispenseRequest', {}).get('validityPeriod', {}).get('end', '')
+
+        valid_str = ''
+        if valid_start != '' and valid_end != '':
+            valid_str = f"{convert_fhir_to_local_str(valid_start)} to {convert_fhir_to_local_str(valid_end)}"
+        
         medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('display', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
             medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
@@ -737,16 +745,18 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         
         dose_quantity_value = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('value', '')
         dose_quantity_unit = dosage_instr.get('doseAndRate', [{}])[0].get('doseQuantity', {}).get('unit', '')
-                
+        
+        reference_result = extract_ref_display(med)        
         item = {}
         item['medication'] = medication
         item['status'] = status
         item['intent'] = intent
         item['dateOn'] = dateOn
-        item['validity'] = f"{valid_start} to {valid_end}"
+        item['validity'] = valid_str
         item['dosage'] = dosage_text
         item['dosage_timing'] = dosage_timing
         item['dosage_quantity'] = f"{dose_quantity_value} {dose_quantity_unit}"
+        apply_reference_info(item, reference_result)
         lines.append(item)
 
     return lines

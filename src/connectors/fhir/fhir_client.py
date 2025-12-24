@@ -211,16 +211,22 @@ class FhirClient:
         
     #for medication request
     async def get_patient_medication_requests(self, args: Dict[str, Any]):
-        params = {'patient': str(args['patientId'])}
-        if args.get('status'): params['status'] = args['status']
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            if args.get('patientId'): params['patient'] = str(args['patientId'])                            
+            if args.get('encounter_id'): params['encounter'] = str(args['encounter_id'])
+            if args.get('status'): params['status'] = args['status']
         
         response = await self.client.get(f"/MedicationRequest", params=params)
         
-        formatted_list = helper.format_medication_requests(response.json()) #adding medication name or reference info
-        result_list = await self._get_medication_info(formatted_list)
-        result_list_text = [", ".join(f"{k}= {v}" for k, v in data.items()) for data in result_list]
-        result_text = '\n'.join(result_list_text)
-        return self._format_response_text(result_text)
+        format_result = helper.format_medication_requests(response.json()) #adding medication name or reference info
+        result_list = await self._get_medication_info(format_result)
+        
+        md_text = self._dicts_to_markdown_table(result_list)
+        
+        return md_text
     
     async def get_patient_medication_dispenses(self, args: Dict[str, Any]):
         params = {'patient': str(args['patientId'])}
