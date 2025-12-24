@@ -222,8 +222,7 @@ async def get_patient_medication_requests(patientId=None, input_id=None, encount
         return "Error: You must provide either patientId, input_id, or encounter_id"
     if input_id is not None:
         args = {'id': input_id}
-    else:        
-         
+    else:                 
         args = {
             "patientId": patientId, 
             "encounter_id": encounter_id,
@@ -238,7 +237,7 @@ async def get_patient_medication_requests(patientId=None, input_id=None, encount
     return await fhir_client.get_patient_medication_requests({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def search_medication_dispenses(patient_id: str, status = None):
+async def search_medication_dispenses(patientId=None, input_id=None, encounter_id=None, status = None):
     """
     Retrieves records of medications dispensed (supplied) by a pharmacy.
     
@@ -246,21 +245,32 @@ async def search_medication_dispenses(patient_id: str, status = None):
     the prescribed medication from the pharmacy.
     
     Args:
-        patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+        patient_id: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)        
+        input_id: The FHIR Resource ID of the MedicationDispense (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
         status: Optional filter for the order status (e.g., "preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown").
     """
     await ensure_auth()
-    args = {"patientId": patient_id, "status": status}
-    allowed_status = ["preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
-        
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {
+            "patientId": patientId, 
+            "encounter_id": encounter_id,
+            "status": status
+            }
+        allowed_status = ["preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+            
     return await fhir_client.get_patient_medication_dispenses({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def search_medication_administrations(patient_id: str, status = None):
+async def search_medication_administrations(patientId=None, input_id=None, encounter_id=None, status = None):
     """
     Retrieves records of actual medication administration events.
     
@@ -268,17 +278,28 @@ async def search_medication_administrations(patient_id: str, status = None):
     or injected into the patient (common in inpatient or supervised settings).
     
     Args:
-        patient_id: The FHIR Logical ID of the patient (e.g., "P001").
+        patient_id: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)        
+        input_id: The FHIR Resource ID of the MedicationAdministration (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
         status: Optional filter for the order status (e.g. "in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown").
     """
     await ensure_auth()
-    args = {"patientId": patient_id, "status": status}
-    allowed_status = ["in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown"]
-    if status and status in allowed_status:
-        args["status"] = status
-    else:
-        args["status"] = None
-    
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {
+            "patientId": patientId, 
+            "encounter_id": encounter_id,
+            "status": status
+            }
+        allowed_status = ["in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+        
     return await fhir_client.get_patient_medication_administrations({k: v for k, v in args.items() if v is not None}) 
 
 @mcp.tool()

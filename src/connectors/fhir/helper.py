@@ -779,12 +779,13 @@ def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
         dosage_instr = med.get('dosageInstruction', [{}])[0]
         dosage_text =  dosage_instr.get('route', {}).get('coding', [{}])[0].get('code', '')
         dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
-                
+        reference_result = extract_ref_display(med)        
         item = {}
         item['medication'] = medication
         item['status'] = status        
         item['dosage'] = dosage_text
-        item['dosage_timing'] = dosage_timing        
+        item['dosage_timing'] = dosage_timing      
+        apply_reference_info(item, reference_result)  
         lines.append(item)
 
     return lines
@@ -814,7 +815,15 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
             dosage_method = dosage_instr.get('method', {}).get('coding', [{}])[0].get('code', '')
             dosage_dose = str(dosage_instr.get('dose', {}).get('value', '')) + ' ' + dosage_instr.get('dose', {}).get('unit', '')
             dosage_rate = str(dosage_instr.get('rateQuantity', {}).get('value', '')) + ' ' + dosage_instr.get('rateQuantity', {}).get('unit', '')
-                
+        
+        valid_start = med.get('effectivePeriod', {}).get('start', '')
+        valid_end = med.get('effectivePeriod', {}).get('end', '')
+
+        valid_str = ''
+        if valid_start != '' and valid_end != '':
+            valid_str = f"{convert_fhir_to_local_str(valid_start)} to {convert_fhir_to_local_str(valid_end)}"
+        
+        reference_result = extract_ref_display(med)   
         item = {}
         item['medication'] = medication
         item['status'] = status        
@@ -822,6 +831,8 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
         item['dosage_method'] = dosage_method
         item['dosage_dose'] = dosage_dose        
         item['dosage_rate'] = dosage_rate        
+        item['effective_period'] = valid_str
+        apply_reference_info(item, reference_result)
         lines.append(item)
 
     return lines
