@@ -641,3 +641,66 @@ def format_document_references(bundle: Dict[str, Any]) -> list:
         lines.append(item)
 
     return lines
+
+def format_allergy_intolerances(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        allergy = entry.get('resource', {})               
+        clinical_status = allergy.get('clinicalStatus', {}).get('coding', [{}])[0].get('display', '')
+        if clinical_status == '':
+            clinical_status = allergy.get('clinicalStatus', {}).get('coding', [{}])[0].get('code', '')
+        
+        verification_status = allergy.get('verificationStatus', {}).get('coding', [{}])[0].get('display', '')
+        if verification_status == '':
+            verification_status = allergy.get('verificationStatus', {}).get('coding', [{}])[0].get('code', '')
+            
+        allergy_type = allergy.get('type', '')
+        
+        category_list = allergy.get('category', [])
+        category_str = ', '.join(category_list) if category_list else ''
+        
+        criticality = allergy.get('criticality', '')
+        
+        code_list = allergy.get('code', {}).get('coding', [])
+        code_str = ''
+        for code in code_list:
+            current_code = code.get('display', '')
+            if current_code == '':
+                current_code = code.get('code', '')
+            if current_code != '':
+                if code_str != '':
+                    code_str += ', '
+                code_str += current_code
+        
+        substance = allergy.get('code', {}).get('text', '')        
+        note = allergy.get('note', [{}])[0].get('text', '')
+        
+        onset_date = ''
+        if allergy.get('onsetDateTime'):
+            onset_date = convert_fhir_to_local_str(allergy['onsetDateTime'])
+        recorded_date = allergy.get('recordedDate', '')
+        if recorded_date != '':
+            recorded_date = convert_fhir_to_local_str(recorded_date)
+            
+        
+        reference_result = extract_ref_display(allergy) 
+        item = {}
+        item['clinical_status'] = clinical_status                
+        item['verification_status'] = verification_status        
+        item['type'] = allergy_type
+        item['category'] = category_str        
+        item['criticality'] = criticality        
+        item['substance'] = substance
+        item['code'] = code_str
+        item['onset_date'] = onset_date
+        item['recorded_date'] = recorded_date
+        item['note'] = note
+        
+        apply_reference_info(item, reference_result)
+        lines.append(item)
+
+    return lines

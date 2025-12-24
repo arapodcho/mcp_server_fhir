@@ -342,3 +342,18 @@ class FhirClient:
         
         return md_text
     
+    async def get_allergy_intolerances(self, args: Dict[str, Any])->str:
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
+        
+        response = await self.client.get("/AllergyIntolerance", params=params)        
+        formatted_list = helper.format_allergy_intolerances(response.json())
+        
+        md_text = self._dicts_to_markdown_table(formatted_list)
+        
+        return md_text
+    
+    

@@ -442,6 +442,24 @@ async def get_document_references(patientId=None, input_id=None):
         args = {"patientId": patientId}
     return await fhir_client.get_document_references({k: v for k, v in args.items() if v is not None})
 
+@mcp.tool()
+async def get_allergy_intolerances(patientId=None, input_id=None):
+    """
+    Retrieves a patient's allergy intolerances from FHIR resources.
+    This tool fetches AllergyIntolerance records to provide detailed information
+
+    Args:
+        patientId: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person.
+        input_id: The specific FHIR Resource ID for a single AllergyIntolerance. If provided, the search focuses on this specific item.        
+    """
+    await ensure_auth()
+    if patientId is None and input_id is None:
+        return "Error: You must provide either patientId or input_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {"patientId": patientId}
+    return await fhir_client.get_allergy_intolerances({k: v for k, v in args.items() if v is not None})
 
 # 5. Run Server
 if __name__ == "__main__":
