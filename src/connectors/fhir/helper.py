@@ -177,6 +177,7 @@ def format_procedures(bundle: Dict[str, Any]):
             period_str = f"{start} to {end}"
         reference_result = extract_ref_display(procedure)
         current_result = {}
+        current_result['ProcedureID'] = procedure.get('id')
         current_result['Procedure'] = proc_display
         current_result['Category'] = category
         current_result['Status'] = Status
@@ -214,6 +215,7 @@ def format_encounters(bundle: Dict[str, Any]):
         reference_result = extract_ref_display(encounter)
         
         current_result = {}
+        current_result['EncounterID'] = encounter.get('id')
         current_result['period'] = period_str        
         current_result['type'] = type_display
         current_result['reason'] = reason_display
@@ -330,6 +332,7 @@ def format_recent_health_metrics(bundle: Dict[str, Any]):
     output = []
     for type_name, data in metrics.items():
         current_output = {}
+        format_recent_health_metrics
         current_output['Category'] = data['category']
         current_output['Type'] = data['type']
         current_output['Status'] = data['status']
@@ -369,6 +372,7 @@ def format_conditions(bundle: Dict[str, Any]):
         reference_result = extract_ref_display(condition)    
         
         item = {}
+        item['ConditionID'] = condition.get('id')
         item['name'] = name
         item['category'] = category        
         item['onset'] = onset_str
@@ -423,6 +427,7 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(med)        
         item = {}
+        item['MedicationRequestID'] = med.get('id')
         item['medication'] = medication
         item['status'] = status
         item['intent'] = intent
@@ -456,6 +461,7 @@ def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
         dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
         reference_result = extract_ref_display(med)        
         item = {}
+        item['MedicationDispenseID'] = med.get('id')
         item['medication'] = medication
         item['status'] = status        
         item['dosage'] = dosage_text
@@ -502,6 +508,7 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(med)   
         item = {}
+        item['MedicationAdministrationID'] = med.get('id')
         item['medication'] = medication
         item['status'] = status        
         item['category'] = category
@@ -558,6 +565,7 @@ def format_medication_statement(bundle: Dict[str, Any]) -> list:
               
         reference_result = extract_ref_display(med) 
         item = {}
+        item['MedicationStatementID'] = med.get('id')
         item['medication'] = medication
         item['status'] = status                
         item['dosage'] = dosage        
@@ -588,6 +596,7 @@ def format_diagnostic_reports(bundle: Dict[str, Any]) -> list:
         conclusion = med.get('conclusion', '')
         reference_result = extract_ref_display(med) 
         item = {}
+        item['DiagnosticReportID'] = med.get('id')
         item['status'] = status                
         item['category'] = category        
         item['issued_date'] = issued_date
@@ -631,6 +640,7 @@ def format_document_references(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(doc) 
         item = {}
+        item['DocumentReferenceID'] = doc.get('id')
         item['status'] = status                
         item['type'] = doc_type        
         item['date'] = date
@@ -689,6 +699,7 @@ def format_allergy_intolerances(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(allergy) 
         item = {}
+        item['AllergyIntoleranceID'] = allergy.get('id')
         item['clinical_status'] = clinical_status                
         item['verification_status'] = verification_status        
         item['type'] = allergy_type
@@ -741,6 +752,7 @@ def format_family_member_history(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(family_members) 
         item = {}
+        item['FamilyMemberHistoryID'] = family_members.get('id')
         item['status'] = status
         item['relationship'] = relationship
         item['name'] = name
@@ -810,6 +822,7 @@ def format_immunizations(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(immunization) 
         item = {}
+        item['ImmunizationID'] = immunization.get('id')
         item['status'] = status                
         item['vaccine_code'] = vaccine_code        
         item['occurrence'] = occurrence
