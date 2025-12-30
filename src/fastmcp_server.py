@@ -480,6 +480,30 @@ async def get_family_member_history(patientId=None, input_id=None):
         args = {"patientId": patientId}
     return await fhir_client.get_family_member_history({k: v for k, v in args.items() if v is not None})
 
+@mcp.tool()
+async def get_patient_immunizations(patientId=None, input_id=None, encounter_id=None):
+    """
+    Retrieves a patient's immunization history from FHIR resources.
+    This tool fetches Immunization records to provide detailed information
+    
+    Args:
+        patientId: The FHIR Logical ID of the patient (Optional, but recommended if input_id or encounter_id is missing)        
+        input_id: The FHIR Resource ID of the Immunization (Optional, if provided, other fields can be omitted)
+        encounter_id: The FHIR Resource ID of the encounter (Optional, but recommended if input_id or patientId is missing)
+    """
+    await ensure_auth()
+    if patientId is None and input_id is None and encounter_id is None:
+        return "Error: You must provide either patientId, input_id, or encounter_id"
+    if input_id is not None:
+        args = {'id': input_id}
+    else:                 
+        args = {
+            "patientId": patientId, 
+            "encounter_id": encounter_id,
+            }
+        
+    return await fhir_client.get_patient_immunizations({k: v for k, v in args.items() if v is not None})
+
 # 5. Run Server
 if __name__ == "__main__":
     # TypeScript의 stdio transport 실행과 동일

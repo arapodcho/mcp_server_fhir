@@ -752,3 +752,78 @@ def format_family_member_history(bundle: Dict[str, Any]) -> list:
         lines.append(item)
 
     return lines
+
+def format_immunizations(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        immunization = entry.get('resource', {})               
+        status = immunization.get('status', '')
+        vaccine_code = immunization.get('vaccineCode', {}).get('text', '')
+        if vaccine_code == '':
+            vaccine_code = immunization.get('vaccineCode', {}).get('coding', [{}])[0].get('display', '')   
+        if vaccine_code == '':
+            vaccine_code = immunization.get('vaccineCode', {}).get('coding', [{}])[0].get('code', '')
+        protocols = immunization.get("protocolApplied", [])
+        parsed_results = []
+        for protocol in protocols:
+            # 1. 모든 질병명 추출 및 ", "으로 연결
+            target_disease_list = protocol.get("targetDisease", [])
+            disease_names = []
+            for d in target_disease_list:
+                # text 우선, 없으면 coding의 display 추출
+                name = d.get("text") or (d.get("coding", [{}])[0].get("display"))
+                if name:
+                    disease_names.append(name)
+            
+            # 질병명들을 ", "으로 엮음 (예: "Diphtheria, Tetanus, Pertussis")
+            all_diseases = ", ".join(disease_names) if disease_names else "Unknown Disease"
+            
+            # 2. 차수 정보 추출 (다형성 필드 처리)
+            # doseNumberPositiveInt 또는 doseNumberString 중 있는 것을 가져옴
+            dose_num = (
+                protocol.get("doseNumberPositiveInt") or 
+                protocol.get("doseNumberString") or
+                protocol.get("doseNumber")
+            )
+            
+            # 3. 전체 권장 횟수 추출
+            series_doses = (
+                protocol.get("seriesDosesPositiveInt") or 
+                protocol.get("seriesDosesString") or 
+                protocol.get("seriesDoses")
+            )
+
+            parsed_results.append({
+                "series_name": protocol.get("series"),
+                "target_diseases": all_diseases,
+                "dose_number": dose_num,
+                "total_series_doses": series_doses
+            })
+        occurrence = immunization.get('occurrenceDateTime', '')
+        if occurrence != '':
+            occurrence = convert_fhir_to_local_str(occurrence)
+        
+            
+        reference_result = extract_ref_display(immunization) 
+        item = {}
+        item['status'] = status                
+        item['vaccine_code'] = vaccine_code        
+        item['occurrence'] = occurrence
+        
+        if len(parsed_results) > 0:
+            for i, protocol in enumerate(parsed_results):
+                index_str = ''
+                if i > 0:
+                    index_str = f"_{i+1}"
+                item[f'series_name{index_str}'] = protocol['series_name']
+                item[f'target_diseases{index_str}'] = protocol['target_diseases']
+                item[f'dose_number{index_str}'] = protocol['dose_number']
+                item[f'total_series_doses{index_str}'] = protocol['total_series_doses']
+        apply_reference_info(item, reference_result)
+        lines.append(item)
+
+    return lines

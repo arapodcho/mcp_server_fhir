@@ -370,4 +370,17 @@ class FhirClient:
         
         return md_text
     
-    
+    async def get_patient_immunizations(self, args: Dict[str, Any])->str:
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            if args.get('patientId'): params['patient'] = str(args['patientId'])                            
+            if args.get('encounter_id'): params['encounter'] = str(args['encounter_id'])    
+        
+        response = await self.client.get("/Immunization", params=params)        
+        formatted_list = helper.format_immunizations(response.json())
+        
+        md_text = self._dicts_to_markdown_table(formatted_list)
+        
+        return md_text
