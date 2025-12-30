@@ -704,3 +704,51 @@ def format_allergy_intolerances(bundle: Dict[str, Any]) -> list:
         lines.append(item)
 
     return lines
+
+def format_family_member_history(bundle: Dict[str, Any]) -> list:
+    entries = bundle.get('entry', []) if isinstance(bundle, dict) else bundle
+    if not entries:
+        return []
+
+    lines = []
+    for entry in entries:
+        family_members = entry.get('resource', {})               
+        status = family_members.get('status', '')
+        relationship = family_members.get('relationship', {}).get('coding', [{}])[0].get('display', '')   
+        if relationship == '':
+            relationship = family_members.get('relationship', {}).get('coding', [{}])[0].get('code', '')
+        sex = family_members.get('sex', {}).get('coding', [{}])[0].get('display', '')
+        if sex == '':
+            sex = family_members.get('sex', {}).get('coding', [{}])[0].get('code', '')
+        name = family_members.get('name', '')
+        deceased_str = 'Unknown'
+        deceasedBoolean = family_members.get('deceasedBoolean', None)
+        if deceasedBoolean is not None:
+            if deceasedBoolean:
+                deceased_str = 'Deceased'
+            else:
+                deceased_str = 'Living'
+        condition_list = family_members.get('condition', [])
+        conditions_str = ''
+        for condition in condition_list:
+            current_condition = condition.get('code', {}).get('text', '')
+            if current_condition != '':    
+                current_condition += ', '
+            current_condition += condition.get('code', {}).get('coding', [{}])[0].get('display', '')
+            if conditions_str != '':
+                conditions_str += '; '
+            conditions_str += current_condition
+            
+        reference_result = extract_ref_display(family_members) 
+        item = {}
+        item['status'] = status
+        item['relationship'] = relationship
+        item['name'] = name
+        item['sex'] = sex
+        item['deceased'] = deceased_str
+        item['conditions'] = conditions_str
+        
+        apply_reference_info(item, reference_result)
+        lines.append(item)
+
+    return lines

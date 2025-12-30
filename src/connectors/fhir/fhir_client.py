@@ -356,4 +356,18 @@ class FhirClient:
         
         return md_text
     
+    async def get_family_member_history(self, args: Dict[str, Any])->str:
+        params = {}
+        if args.get('id'):
+            params['_id'] = args['id']        
+        else:
+            params = {'patient': str(args['patientId'])}
+        
+        response = await self.client.get("/FamilyMemberHistory", params=params)        
+        formatted_list = helper.format_family_member_history(response.json())
+        
+        md_text = self._dicts_to_markdown_table(formatted_list)
+        
+        return md_text
+    
     
