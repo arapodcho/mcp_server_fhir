@@ -1,14 +1,6 @@
 # Core runtime
 requests>=2.31.0
-# pandas disabled on Python 3.13 due to wheel/build issues
-# use tabulate for pretty-print tables instead
 pandas
-
-# FastMCP server
 mcp>=1.0.0
 httpx>=0.25.0
 python-dotenv>=1.0.0
-
-# FHIR + validation (version-pinned as requested)
-# pydantic<2.0.0
-# fhir.resources<7.0.0
