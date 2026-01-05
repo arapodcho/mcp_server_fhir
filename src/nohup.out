@@ -1,0 +1,41 @@
+FHIR MCP server running on stdio
+INFO:     Started server process [3735459]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8052 (Press CTRL+C to quit)
+INFO:     172.30.1.254:34206 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34218 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34226 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34230 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34242 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34254 - "POST /messages/?session_id=1c43c7bc658642fca803a804f21df09e HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34254 - "POST /messages/?session_id=1c43c7bc658642fca803a804f21df09e HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34254 - "POST /messages/?session_id=1c43c7bc658642fca803a804f21df09e HTTP/1.1" 202 Accepted
+Processing request of type ListToolsRequest
+INFO:     172.30.1.254:34260 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34268 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34274 - "POST /messages/?session_id=870861c6154f44bf93b6642e68152bb0 HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34274 - "POST /messages/?session_id=870861c6154f44bf93b6642e68152bb0 HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34274 - "POST /messages/?session_id=870861c6154f44bf93b6642e68152bb0 HTTP/1.1" 202 Accepted
+Processing request of type ListToolsRequest
+INFO:     172.30.1.254:52204 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:52218 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:52220 - "POST /messages/?session_id=9849f341ee1b4fa89b1cc9cf724aafd1 HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:52220 - "POST /messages/?session_id=9849f341ee1b4fa89b1cc9cf724aafd1 HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:52220 - "POST /messages/?session_id=9849f341ee1b4fa89b1cc9cf724aafd1 HTTP/1.1" 202 Accepted
+Processing request of type ListToolsRequest
+INFO:     172.30.1.254:54278 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:54286 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34892 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:34906 - "POST /messages/?session_id=388178879d30493cb3c9578d776ae9af HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34906 - "POST /messages/?session_id=388178879d30493cb3c9578d776ae9af HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:34906 - "POST /messages/?session_id=388178879d30493cb3c9578d776ae9af HTTP/1.1" 202 Accepted
+Processing request of type ListToolsRequest
+INFO:     172.30.1.254:36574 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:36588 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:60804 - "GET /sse HTTP/1.1" 200 OK
+INFO:     172.30.1.254:60818 - "POST /messages/?session_id=db4d2818d8e142b99d89344755a9880c HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:60818 - "POST /messages/?session_id=db4d2818d8e142b99d89344755a9880c HTTP/1.1" 202 Accepted
+INFO:     172.30.1.254:60818 - "POST /messages/?session_id=db4d2818d8e142b99d89344755a9880c HTTP/1.1" 202 Accepted
+Processing request of type ListToolsRequest
+INFO:     35.203.210.162:57456 - "GET / HTTP/1.1" 404 Not Found
