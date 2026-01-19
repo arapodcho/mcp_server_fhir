@@ -124,7 +124,7 @@ async def aaa_clinical_system_rules():
 @mcp.tool()
 async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None):
     """
-    Search for a patient to retrieve their unique FHIR `patient_id`.
+    Search for a **Patient (환자)** to retrieve their unique FHIR `patient_id`.
     Requires 'patient_id' or 'last_name'.
     Args:
         birth_date: YYYY-MM-DD. Prefixes: 'ge', 'le', 'eq'.
@@ -165,11 +165,11 @@ async def find_patient(last_name=None, first_name=None, patient_id=None, birth_d
 @mcp.tool()
 async def get_patient_encounters(patient_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
     """
-    Get healthcare visits/encounters.
+    Get healthcare visits/**Encounters (진료, 방문, 입원, 내원 이력)**.
     Requires patient_id or encounter_id
     Args:
         patient_id: Patient FHIR ID.
-        status: "planned", "arrived", "in-progress", "finished", "cancelled".
+        status: "planned"(예약됨), "arrived"(도착), "in-progress"(진료중), "finished"(완료/퇴원), "cancelled".
     """
     await ensure_auth()
     if patient_id is None and encounter_id is None:
@@ -203,13 +203,13 @@ async def get_patient_encounters(patient_id=None, encounter_id=None, dateFrom = 
 @mcp.tool()
 async def get_patient_observations(patient_id=None, category=None, observation_id=None, encounter_id=None, code = None, dateFrom = None, dateTo = None, status = None):
     """
-    Get clinical observations (vitals, labs).
+    Get clinical **Observations (검사 결과, 수치, 활력징후)**
     Requires patient_id, encounter_id, or observation_id.
     Args:
         patient_id: Patient FHIR ID.
         encounter_id: Encounter FHIR ID.
-        category: "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", "symptom".
-        status: "registered", "preliminary", "final", "amended", "corrected", "cancelled".
+        category: "social-history", "vital-signs" (활력징후), "imaging" (영상검사), "laboratory" (진단검사), "procedure", "survey", "exam", "therapy", "activity", "symptom".
+        status: "registered", "preliminary"(중간결과), "final"(최종결과), "amended", "corrected", "cancelled".
     """
     await ensure_auth()
     if patient_id is None and observation_id is None and encounter_id is None:
@@ -257,12 +257,12 @@ async def get_patient_observations(patient_id=None, category=None, observation_i
 @mcp.tool()
 async def get_patient_conditions(patient_id=None, condition_id=None, encounter_id=None, onsetDate = None,  status = None):
     """
-    Get diagnoses/conditions.
+    Get diagnoses/**Conditions (진단명, 병명, 질환)**
     Requires patient_id, condition_id, or encounter_id
     Args:
         patient_id: Patient FHIR ID.
         encounter_id: Encounter FHIR ID.
-        status: "active", "inactive", "resolved".
+        status: "active"(진행중), "inactive", "resolved"(완치).
     """
     await ensure_auth()
     if patient_id is None and condition_id is None and encounter_id is None:
@@ -296,7 +296,8 @@ async def get_patient_conditions(patient_id=None, condition_id=None, encounter_i
 @mcp.tool()
 async def get_patient_medication_requests(patient_id=None, medication_request_id=None, encounter_id=None, status = None):
     """
-    Get prescriptions (orders).
+    Get prescriptions (**MedicationRequests (의사 처방, 투약 지시)**) .
+    *Does not mean the patient took the drug (약 복용 여부가 아님).*
     Requires patient_id, medication_request_id, or encounter_id
     Args:
         patient_id: Patient FHIR ID.
@@ -325,10 +326,9 @@ async def get_patient_medication_requests(patient_id=None, medication_request_id
 @mcp.tool()
 async def search_medication_dispenses(patient_id=None, medication_dispense_id=None, encounter_id=None, status = None):
     """
-    Retrieves records of medications dispensed (supplied) by a pharmacy.
+    Retrieves **MedicationDispenses (약국 조제, 제조, 약 수령/불출)** records.
     
-    Use this tool to verify if the patient has actually received or picked up 
-    the prescribed medication from the pharmacy.
+    Use this tool to verify if the patient has actually received or picked up the prescribed medication from the pharmacy.
     Requires patient_id, medication_dispense_id, or encounter_id.
     Args:
         patient_id: Patient FHIR ID.
@@ -357,7 +357,7 @@ async def search_medication_dispenses(patient_id=None, medication_dispense_id=No
 @mcp.tool()
 async def search_medication_administrations(patient_id=None, medication_administration_id=None, encounter_id=None, status = None):
     """
-    Retrieves records of actual medication administration events.
+    Retrieves **MedicationAdministrations (실제 투여, 주사, 병동 내 복용)** records.
     
     Use this tool to track exactly when and how much medication was consumed by 
     or injected into the patient (common in inpatient or supervised settings).
@@ -390,7 +390,7 @@ async def search_medication_administrations(patient_id=None, medication_administ
 @mcp.tool()
 async def get_patient_procedures(patient_id = None, procedure_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
     """
-    Get procedures performed.
+    Get **Procedures (수술, 시술, 처치, 검사 행위)** performed.
     Requires patient_id, procedure_id, or encounter_id.
     Args:
         patient_id: Patient FHIR ID.
@@ -435,7 +435,7 @@ async def get_patient_procedures(patient_id = None, procedure_id=None, encounter
 @mcp.tool()
 async def get_medications_statement(patient_id=None, medication_statement_id=None):
     """
-    Retrieves a patient's medication history from FHIR resources.
+    Retrieves a patient's medication history and **MedicationStatements (약물 복용 이력, 환자 진술 포함)** from FHIR resources.
     
     This tool fetches MedicationStatement records to provide a chronological view 
     of medications a patient has taken, is taking, or is intended to take.
@@ -455,7 +455,7 @@ async def get_medications_statement(patient_id=None, medication_statement_id=Non
 @mcp.tool()
 async def get_diagnostic_report(patient_id=None, diagnostic_report_id=None):
     """
-    Retrieves a patient's diagnostic report from FHIR resources.
+    Retrieves a patient's **DiagnosticReports (판독문, 진단 보고서)** from FHIR resources.
     Requires patient_id or diagnostic_report_id.   
     Args:
         patient_id: Patient FHIR ID.
@@ -472,7 +472,7 @@ async def get_diagnostic_report(patient_id=None, diagnostic_report_id=None):
 @mcp.tool()
 async def get_document_references(patient_id=None, document_reference_id=None):
     """
-    Retrieves a patient's document references from FHIR resources.
+    Retrieves a patient's **DocumentReferences (의무기록, 소견서, 진단서 등 문서)** from FHIR resources.
     Requires patient_id or document_reference_id.
     Args:
         patient_id: Patient FHIR ID.
@@ -489,7 +489,7 @@ async def get_document_references(patient_id=None, document_reference_id=None):
 @mcp.tool()
 async def get_allergy_intolerances(patient_id=None, allergy_intolerance_id=None):
     """
-    Retrieves a patient's allergy intolerances from FHIR resources.
+    Retrieves a patient's **AllergyIntolerances (알레르기, 부작용)** from FHIR resources.
     Requires patient_id or allergy_intolerance_id.
     Args:
         patient_id: Patient FHIR ID.
@@ -506,7 +506,7 @@ async def get_allergy_intolerances(patient_id=None, allergy_intolerance_id=None)
 @mcp.tool()
 async def get_family_member_history(patient_id=None, family_member_history_id=None):
     """
-    Retrieves a patient's family member history from FHIR resources.
+    Retrieves a patient's **FamilyMemberHistory (가족력)** from FHIR resources.
     Requires patient_id or family_member_history_id.
     Args:
         patient_id: Patient FHIR ID.
@@ -523,7 +523,7 @@ async def get_family_member_history(patient_id=None, family_member_history_id=No
 @mcp.tool()
 async def get_patient_immunizations(patient_id=None, immunization_id=None, encounter_id=None):
     """
-    Retrieves a patient's immunization history from FHIR resources.
+    Retrieves a patient's **Immunizations (예방접종, 백신)** history from FHIR resources.
     Requires patient_id, immunization_id, or encounter_id.
     Args:
         patient_id: Patient FHIR ID.
