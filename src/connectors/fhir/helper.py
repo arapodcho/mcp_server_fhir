@@ -142,12 +142,12 @@ def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[
         reference_result = extract_ref_display(patient)        
         
         current_result = {}
-        current_result['PatientID'] = patient.get('id')
-        current_result['Name'] = f"{name.get('family')}, {given_name}"
-        current_result['DateOfBirth'] = patient.get('birthDate')
-        current_result['Gender'] = patient.get('gender')
-        current_result['Address'] = format_address(address)
-        current_result['Phone'] = phone
+        current_result['patient_id'] = patient.get('id')
+        current_result['full_name'] = f"{name.get('family')}, {given_name}"
+        current_result['date_of_birth'] = patient.get('birthDate')
+        current_result['gender'] = patient.get('gender')
+        current_result['address'] = format_address(address)
+        current_result['phone'] = phone
         apply_reference_info(current_result, reference_result)
         results.append(current_result)
 
@@ -177,7 +177,7 @@ def format_procedures(bundle: Dict[str, Any]):
             period_str = f"{start} to {end}"
         reference_result = extract_ref_display(procedure)
         current_result = {}
-        current_result['ProcedureID'] = procedure.get('id')
+        current_result['procedure_id'] = procedure.get('id')
         current_result['Procedure'] = proc_display
         current_result['Category'] = category
         current_result['Status'] = Status
@@ -215,7 +215,7 @@ def format_encounters(bundle: Dict[str, Any]):
         reference_result = extract_ref_display(encounter)
         
         current_result = {}
-        current_result['EncounterID'] = encounter.get('id')
+        current_result['encounter_id'] = encounter.get('id')
         current_result['period'] = period_str        
         current_result['type'] = type_display
         current_result['reason'] = reason_display
@@ -372,7 +372,7 @@ def format_conditions(bundle: Dict[str, Any]):
         reference_result = extract_ref_display(condition)    
         
         item = {}
-        item['ConditionID'] = condition.get('id')
+        item['condition_id'] = condition.get('id')
         item['name'] = name
         item['category'] = category        
         item['onset'] = onset_str
@@ -427,7 +427,7 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(med)        
         item = {}
-        item['MedicationRequestID'] = med.get('id')
+        item['medication_request_id'] = med.get('id')
         item['medication'] = medication
         item['status'] = status
         item['intent'] = intent
@@ -461,7 +461,7 @@ def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
         dosage_timing = dosage_instr.get('timing', {}).get('code', {}).get('coding', [{}])[0].get('code', '')
         reference_result = extract_ref_display(med)        
         item = {}
-        item['MedicationDispenseID'] = med.get('id')
+        item['medication_dispense_id'] = med.get('id')
         item['medication'] = medication
         item['status'] = status        
         item['dosage'] = dosage_text
@@ -508,7 +508,7 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(med)   
         item = {}
-        item['MedicationAdministrationID'] = med.get('id')
+        item['medication_administration_id'] = med.get('id')
         item['medication'] = medication
         item['status'] = status        
         item['category'] = category
@@ -565,7 +565,7 @@ def format_medication_statement(bundle: Dict[str, Any]) -> list:
               
         reference_result = extract_ref_display(med) 
         item = {}
-        item['MedicationStatementID'] = med.get('id')
+        item['medication_statement_id'] = med.get('id')
         item['medication'] = medication
         item['status'] = status                
         item['dosage'] = dosage        
@@ -596,7 +596,7 @@ def format_diagnostic_reports(bundle: Dict[str, Any]) -> list:
         conclusion = med.get('conclusion', '')
         reference_result = extract_ref_display(med) 
         item = {}
-        item['DiagnosticReportID'] = med.get('id')
+        item['diagnostic_report_id'] = med.get('id')
         item['status'] = status                
         item['category'] = category        
         item['issued_date'] = issued_date
@@ -640,7 +640,7 @@ def format_document_references(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(doc) 
         item = {}
-        item['DocumentReferenceID'] = doc.get('id')
+        item['document_reference_id'] = doc.get('id')
         item['status'] = status                
         item['type'] = doc_type        
         item['date'] = date
@@ -699,7 +699,7 @@ def format_allergy_intolerances(bundle: Dict[str, Any]) -> list:
         
         reference_result = extract_ref_display(allergy) 
         item = {}
-        item['AllergyIntoleranceID'] = allergy.get('id')
+        item['allergy_intolerance_id'] = allergy.get('id')
         item['clinical_status'] = clinical_status                
         item['verification_status'] = verification_status        
         item['type'] = allergy_type
@@ -752,7 +752,7 @@ def format_family_member_history(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(family_members) 
         item = {}
-        item['FamilyMemberHistoryID'] = family_members.get('id')
+        item['family_member_history_id'] = family_members.get('id')
         item['status'] = status
         item['relationship'] = relationship
         item['name'] = name
@@ -822,7 +822,7 @@ def format_immunizations(bundle: Dict[str, Any]) -> list:
             
         reference_result = extract_ref_display(immunization) 
         item = {}
-        item['ImmunizationID'] = immunization.get('id')
+        item['immunization_id'] = immunization.get('id')
         item['status'] = status                
         item['vaccine_code'] = vaccine_code        
         item['occurrence'] = occurrence

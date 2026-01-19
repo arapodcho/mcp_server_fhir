@@ -49,24 +49,86 @@ async def ensure_auth():
 # 3. Initialize FastMCP Server
 mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
 
+# -------------------------------------------------------------------------
+SYSTEM_RULES_TEXT = """
+[CRITICAL SYSTEM INSTRUCTIONS]
+You are a clinical AI assistant. Apply these rules to ALL tools:
+
+1. [ID Resolution Logic]
+   - **Source of Truth:**
+     * `patient_id`: MUST come from `find_patient`.  
+     * `encounter_id`: MUST come from `get_patient_encounters`.
+   - **Hierarchy:** Resolve `patient_id` (Who) -> `encounter_id` (Which Visit) -> Resource (What).
+   - **Strict Ban:** NEVER use patient names as IDs.
+   - **[IMPORTANT] Context Locking:** * Once you retrieve a `patient_id` or `encounter_id`, **treat them as active session variables.**
+     * **Explicit Output:** You MUST mention the IDs in your final answer (e.g., "Found records for patient_id P-123, encounter_id E-456"). This ensures they are saved in the chat history.
+     * **Auto-Reuse:** Automatically apply these existing IDs to ALL subsequent tool calls without asking or searching again.
+     
+2. [Category & Context]
+   - Infer `category` automatically (e.g., 'BP' -> 'vital-signs').
+   - Use strict Enum values provided in tool arguments.
+   
+3. [Formatting]
+   - Dates: YYYY-MM-DD format.
+
+4. [Data Presentation] 
+   - **Comprehensive Display:** When a tool returns a data table, please present it in its entirety.
+   - **No Omission:** Displaying all columns and rows without summarizing allows the user to see the full clinical picture. Please ensure no information is left out.
+"""
+
+@mcp.prompt()
+def clinical_assistant_rules():
+    """
+    Load system rules for handling clinical data tools.
+    """
+    return SYSTEM_RULES_TEXT
 # 4. Tool Definitions
 # ToolHandler.ts의 switch-case와 tools.ts의 Schema를 매핑합니다.
 # FastMCP는 함수 시그니처와 Docstring을 통해 Schema를 자동 생성합니다.
+@mcp.tool()
+async def aaa_clinical_system_rules():
+    """
+    !!! DO NOT CALL THIS TOOL. THIS IS A SYSTEM REFERENCE ONLY. !!!
+    
+    Refer to the instructions below for handling IDs and workflows across all other tools.
+    
+    -------------------------------------------------------
+    [CRITICAL SYSTEM INSTRUCTIONS]
+    You are a clinical AI assistant. Apply these rules to ALL tools:
+
+    1. [ID Resolution Logic]
+       - **Source of Truth:**
+         * `patient_id`: MUST come from `find_patient`.
+         * `encounter_id`: MUST come from `get_patient_encounters`.
+       - **Hierarchy:** Resolve `patient_id` (Who) -> `encounter_id` (Which Visit) -> Resource (What).
+       - **Strict Ban:** NEVER use patient names as IDs.
+       - **[IMPORTANT] Context Locking:** * Once you retrieve a `patient_id` or `encounter_id`, **treat them as active session variables.**
+         * **Explicit Output:** You MUST mention the IDs in your final answer (e.g., "Found records for patient_id P-123, encounter_id E-456"). This ensures they are saved in the chat history.
+         * **Auto-Reuse:** Automatically apply these existing IDs to ALL subsequent tool calls without asking or searching again.
+   
+    2. [Category & Context]
+       - Infer `category` automatically (e.g., 'BP' -> 'vital-signs').
+       - Use strict Enum values provided in tool arguments.
+       
+    3. [Formatting]
+       - Dates: YYYY-MM-DD format.
+       
+    4. [Data Presentation] 
+        - **Comprehensive Display:** When a tool returns a data table, please present it in its entirety.
+        - **No Omission:** Displaying all columns and rows without summarizing allows the user to see the full clinical picture. Please ensure no information is left out.       
+    -------------------------------------------------------
+    """
+    
+    return SYSTEM_RULES_TEXT
 
 @mcp.tool()
 async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None):
     """
-    Search for a patient to retrieve their unique FHIR Resource ID (patient_id).
-    
+    Search for a patient to retrieve their unique FHIR `patient_id`.
+    Requires 'patient_id' or 'last_name'.
     Args:
-        last_name: Family name (Optional, but recommended if patient_id is missing)
-        first_name: Given name (Optional)
-        patient_id: Patient resource ID (Optional, if provided, other fields can be omitted)
-        birth_date: YYYY-MM-DD format (Optional)
-          - For 'born after 2020', use 'ge2020-01-01'.
-          - For 'born in 2020', use 'eq2020'.
-          - For 'between 2010 and 2015', use 'ge2010-01-01&birthdate=le2015-12-31'.
-        gender: Patient gender ("male", "female", "other", "unknown") (Optional)
+        birth_date: YYYY-MM-DD. Prefixes: 'ge', 'le', 'eq'.
+        gender: "male", "female", "other", "unknown".
     """
     await ensure_auth()
     # 최소한의 검색 조건이 있는지 확인 (ID 혹은 성 중 하나는 있어야 함)
@@ -99,21 +161,55 @@ async def find_patient(last_name=None, first_name=None, patient_id=None, birth_d
     
     return await fhir_client.find_patient(cleaned_args)
 
+
+@mcp.tool()
+async def get_patient_encounters(patient_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
+    """
+    Get healthcare visits/encounters.
+    Requires patient_id or encounter_id
+    Args:
+        patient_id: Patient FHIR ID.
+        status: "planned", "arrived", "in-progress", "finished", "cancelled".
+    """
+    await ensure_auth()
+    if patient_id is None and encounter_id is None:
+        return "Error: You must provide either patient_id or encounter_id"
+    
+    if encounter_id is not None:
+        args = {'id': encounter_id}
+    else:
+        args = {"patientId": patient_id, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
+        
+        # dateFrom YYYY-MM-DD 형식일 때만 포함
+        if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
+            args["dateFrom"] = dateFrom
+        else:
+            args["dateFrom"] = None
+            
+        if dateTo and _is_valid_yyyy_mm_dd(dateTo):
+            args["dateTo"] = dateTo
+        else:
+            args["dateTo"] = None
+            
+        # status 허용된 값일 때만 포함
+        allowed_status = ["planned", "arrived", "in-progress", "finished", "cancelled"]
+        if status and status in allowed_status:
+            args["status"] = status
+        else:
+            args["status"] = None
+            
+    return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
+
 @mcp.tool()
 async def get_patient_observations(patient_id=None, category=None, observation_id=None, encounter_id=None, code = None, dateFrom = None, dateTo = None, status = None):
     """
-    Get clinical observations (vitals, labs, exams, etc.) for a patient from FHIR resources.    
-    The model should analyze the user's specific request to infer the appropriate 'category' (e.g., use 'vital-signs' for blood pressure requests).
-    
+    Get clinical observations (vitals, labs).
+    Requires patient_id, encounter_id, or observation_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if observation_id or encounter_id is missing).
-        category: can be None, otherwise it has to be among "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", and "symptom"
-        observation_id: The FHIR Resource ID of the observation (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if observation_id or patient_id is missing)
-        code:  can be None
-        dateFrom: YYYY-MM-DD format (can be None)
-        dateTo: YYYY-MM-DD format (can be None)
-        status: can be None, otherwise it has to be among "registered", "preliminary", "final", "amended", "corrected", and "cancelled"
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        category: "social-history", "vital-signs", "imaging", "laboratory", "procedure", "survey", "exam", "therapy", "activity", "symptom".
+        status: "registered", "preliminary", "final", "amended", "corrected", "cancelled".
     """
     await ensure_auth()
     if patient_id is None and observation_id is None and encounter_id is None:
@@ -160,13 +256,13 @@ async def get_patient_observations(patient_id=None, category=None, observation_i
 
 @mcp.tool()
 async def get_patient_conditions(patient_id=None, condition_id=None, encounter_id=None, onsetDate = None,  status = None):
-    """Get medical conditions/diagnoses for a patient.
+    """
+    Get diagnoses/conditions.
+    Requires patient_id, condition_id, or encounter_id
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if condition_id or encounter_id is missing)        
-        condition_id: The FHIR Resource ID of the condition (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if condition_id or patient_id is missing)
-        onsetDate: YYYY-MM-DD format (can be None)
-        status: can be None, otherwise it has to be among "active", "inactive", and "resolved"
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        status: "active", "inactive", "resolved".
     """
     await ensure_auth()
     if patient_id is None and condition_id is None and encounter_id is None:
@@ -200,16 +296,12 @@ async def get_patient_conditions(patient_id=None, condition_id=None, encounter_i
 @mcp.tool()
 async def get_patient_medication_requests(patient_id=None, medication_request_id=None, encounter_id=None, status = None):
     """
-    Retrieves medication orders (prescriptions) for a specific patient. 
-    
-    Use this tool to find out what medications a doctor has prescribed or ordered, 
-    regardless of whether the patient has actually taken them.
-    
+    Get prescriptions (orders).
+    Requires patient_id, medication_request_id, or encounter_id
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if medication_request_id or encounter_id is missing)        
-        medication_request_id: The FHIR Resource ID of the MedicationRequest (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if medication_request_id or patient_id is missing)
-        status: Optional filter for the order status (e.g., "active", "on-hold", "ended", "stopped", "completed", "cancelled", "entered-in-error", "draft", "unknown"). 
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        status: "active", "on-hold", "ended", "stopped", "completed", "cancelled", "entered-in-error", "draft", "unknown".
     """
     await ensure_auth()
     if patient_id is None and medication_request_id is None and encounter_id is None:
@@ -237,12 +329,11 @@ async def search_medication_dispenses(patient_id=None, medication_dispense_id=No
     
     Use this tool to verify if the patient has actually received or picked up 
     the prescribed medication from the pharmacy.
-    
+    Requires patient_id, medication_dispense_id, or encounter_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if medication_dispense_id or encounter_id is missing)        
-        medication_dispense_id: The FHIR Resource ID of the MedicationDispense (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if medication_dispense_id or patient_id is missing)
-        status: Optional filter for the order status (e.g., "preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown").
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        status: "preparation", "in-progress", "cancelled", "on-hold", "completed", "entered-in-error", "unfulfilled", "declined", "unknown".
     """
     await ensure_auth()
     if patient_id is None and medication_dispense_id is None and encounter_id is None:
@@ -271,11 +362,11 @@ async def search_medication_administrations(patient_id=None, medication_administ
     Use this tool to track exactly when and how much medication was consumed by 
     or injected into the patient (common in inpatient or supervised settings).
     
+    Requires patient_id, medication_administration_id, or encounter_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if medication_administration_id or encounter_id is missing)        
-        medication_administration_id: The FHIR Resource ID of the MedicationAdministration (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if medication_administration_id or patient_id is missing)
-        status: Optional filter for the order status (e.g. "in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown").
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        status: "in-progress", "not-done", "on-hold", "completed", "entered-in-error", "stopped", "unknown".
     """
     await ensure_auth()
     if patient_id is None and medication_administration_id is None and encounter_id is None:
@@ -297,59 +388,14 @@ async def search_medication_administrations(patient_id=None, medication_administ
     return await fhir_client.get_patient_medication_administrations({k: v for k, v in args.items() if v is not None}) 
 
 @mcp.tool()
-async def get_patient_encounters(patient_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
-# async def get_patient_encounters(patient_id:Optional[str]=None, input_id:Optional[str]=None, dateFrom :Optional[str]= None, dateTo :Optional[str]= None, status :Optional[str]= None):
-    """
-    Get healthcare encounters/visits for a patient.
-
-    Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if encounter_id is missing)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, if provided, other fields can be omitted)
-        dateFrom: YYYY-MM-DD format (can be None)
-        dateTo: YYYY-MM-DD format (can be None)
-        status: can be None, otherwise it has to be among "planned", "arrived", "in-progress", "finished", and "cancelled"
-    """
-    await ensure_auth()
-    if patient_id is None and encounter_id is None:
-        return "Error: You must provide either patient_id or encounter_id"
-    
-    if encounter_id is not None:
-        args = {'id': encounter_id}
-    else:
-        args = {"patientId": patient_id, "status": status, "dateFrom": dateFrom, "dateTo": dateTo}
-        
-        # dateFrom YYYY-MM-DD 형식일 때만 포함
-        if dateFrom and _is_valid_yyyy_mm_dd(dateFrom):
-            args["dateFrom"] = dateFrom
-        else:
-            args["dateFrom"] = None
-            
-        if dateTo and _is_valid_yyyy_mm_dd(dateTo):
-            args["dateTo"] = dateTo
-        else:
-            args["dateTo"] = None
-            
-        # status 허용된 값일 때만 포함
-        allowed_status = ["planned", "arrived", "in-progress", "finished", "cancelled"]
-        if status and status in allowed_status:
-            args["status"] = status
-        else:
-            args["status"] = None
-            
-    return await fhir_client.get_patient_encounters({k: v for k, v in args.items() if v is not None})
-
-@mcp.tool()
 async def get_patient_procedures(patient_id = None, procedure_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):
     """
-    Get procedures performed on a patient.
-        
+    Get procedures performed.
+    Requires patient_id, procedure_id, or encounter_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if procedure_id or encounter_id is missing)        
-        procedure_id: The FHIR Resource ID of the procedure (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if procedure_id or patient_id is missing)
-        dateFrom: YYYY-MM-DD format (can be None)
-        dateTo: YYYY-MM-DD format (can be None)
-        status: can be None, otherwise it has to be among "preparation", "in-progress", "completed", and "entered-in-error""    
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
+        status: "preparation", "in-progress", "completed", "entered-in-error".
     """
     await ensure_auth()
     if patient_id is None and procedure_id is None and encounter_id is None:
@@ -387,16 +433,15 @@ async def get_patient_procedures(patient_id = None, procedure_id=None, encounter
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
 @mcp.tool()
-async def get_medications_history(patient_id=None, medication_statement_id=None):
+async def get_medications_statement(patient_id=None, medication_statement_id=None):
     """
     Retrieves a patient's medication history from FHIR resources.
     
     This tool fetches MedicationStatement records to provide a chronological view 
     of medications a patient has taken, is taking, or is intended to take.
-
+    Requires patient_id or medication_statement_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first.
-        medication_statement_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
+        patient_id: Patient FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and medication_statement_id is None:
@@ -411,11 +456,9 @@ async def get_medications_history(patient_id=None, medication_statement_id=None)
 async def get_diagnostic_report(patient_id=None, diagnostic_report_id=None):
     """
     Retrieves a patient's diagnostic report from FHIR resources.
-    This tool fetches DiagnosticReport records to provide detailed information
-
+    Requires patient_id or diagnostic_report_id.   
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first.
-        diagnostic_report_id: The specific FHIR Resource ID for a single MedicationStatement. If provided, the search focuses on this specific record's history.        
+        patient_id: Patient FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and diagnostic_report_id is None:
@@ -430,11 +473,9 @@ async def get_diagnostic_report(patient_id=None, diagnostic_report_id=None):
 async def get_document_references(patient_id=None, document_reference_id=None):
     """
     Retrieves a patient's document references from FHIR resources.
-    This tool fetches DocumentReference records to provide detailed information
-
+    Requires patient_id or document_reference_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first.
-        document_reference_id: The specific FHIR Resource ID for a single DocumentReference. If provided, the search focuses on this specific item.        
+        patient_id: Patient FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and document_reference_id is None:
@@ -449,11 +490,9 @@ async def get_document_references(patient_id=None, document_reference_id=None):
 async def get_allergy_intolerances(patient_id=None, allergy_intolerance_id=None):
     """
     Retrieves a patient's allergy intolerances from FHIR resources.
-    This tool fetches AllergyIntolerance records to provide detailed information
-
+    Requires patient_id or allergy_intolerance_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first.
-        allergy_intolerance_id: The specific FHIR Resource ID for a single AllergyIntolerance. If provided, the search focuses on this specific item.        
+        patient_id: Patient FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and allergy_intolerance_id is None:
@@ -468,11 +507,9 @@ async def get_allergy_intolerances(patient_id=None, allergy_intolerance_id=None)
 async def get_family_member_history(patient_id=None, family_member_history_id=None):
     """
     Retrieves a patient's family member history from FHIR resources.
-    This tool fetches FamilyMemberHistory records to provide detailed information
-
+    Requires patient_id or family_member_history_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. Use this to get all medication records for a specific person. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first.
-        family_member_history_id: The specific FHIR Resource ID for a single FamilyMemberHistory. If provided, the search focuses on this specific item.        
+        patient_id: Patient FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and family_member_history_id is None:
@@ -487,12 +524,10 @@ async def get_family_member_history(patient_id=None, family_member_history_id=No
 async def get_patient_immunizations(patient_id=None, immunization_id=None, encounter_id=None):
     """
     Retrieves a patient's immunization history from FHIR resources.
-    This tool fetches Immunization records to provide detailed information
-    
+    Requires patient_id, immunization_id, or encounter_id.
     Args:
-        patient_id: The FHIR Logical ID of the patient. It is the output of find_patient. If the patient_id is missing, use find_patient to identify it first. (Optional, but recommended if immunization_id or encounter_id is missing)        
-        immunization_id: The FHIR Resource ID of the Immunization (Optional, if provided, other fields can be omitted)
-        encounter_id: The FHIR Resource ID of the encounter. It is the output of get_patient_encounters. If the encounter_id is missing, use get_patient_encounters to identify it first. (Optional, but recommended if immunization_id or patient_id is missing)
+        patient_id: Patient FHIR ID.
+        encounter_id: Encounter FHIR ID.
     """
     await ensure_auth()
     if patient_id is None and immunization_id is None and encounter_id is None:

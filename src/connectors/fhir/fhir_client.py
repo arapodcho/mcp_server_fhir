@@ -67,7 +67,7 @@ class FhirClient:
 
         response = await self.client.get("/Patient", params=params)
         formatted_result = helper.format_patient_search_results(response.json(), args)
-        mk_table = self._dicts_to_markdown_table(formatted_result)
+        mk_table = self._dicts_to_markdown_table(formatted_result, resource_type='Patient')
         return mk_table
 
     def handle_error(self, error: Any):
@@ -122,7 +122,7 @@ class FhirClient:
             }]
         }
 
-    def _dicts_to_markdown_table(self, data_list):
+    def _dicts_to_markdown_table(self, data_list, resource_type):
         """
         딕셔너리 리스트를 마크다운 표 형식의 문자열로 변환합니다.
         """
@@ -158,7 +158,14 @@ class FhirClient:
             body_rows.append("| " + " | ".join(row_values) + " |")
         
         # 4. 전체 합치기
-        return "\n".join([header_row, separator_row] + body_rows)
+        result_table = "\n".join([header_row, separator_row] + body_rows)
+        result_value = f"""
+        ### FHIR Resource: {resource_type}
+        The following table provides structured details for the **{resource_type}** resource.
+        {result_table}
+        """
+        
+        return result_value
     
     async def get_patient_observations(self, args: Dict[str, Any]):                
         params = {            
@@ -179,7 +186,7 @@ class FhirClient:
         response = await self.client.get("/Observation", params=params)
         # Observation은 종류가 다양하므로 helper의 recent metrics 사용
         formatted_result = helper.format_recent_health_metrics(response.json())
-        md_text = self._dicts_to_markdown_table(formatted_result)
+        md_text = self._dicts_to_markdown_table(formatted_result, resource_type='Observation')
         return md_text
 
     async def get_patient_conditions(self, args: Dict[str, Any]):
@@ -194,7 +201,7 @@ class FhirClient:
 
         response = await self.client.get("/Condition", params=params)
         formatted_result = helper.format_conditions(response.json())
-        md_text = self._dicts_to_markdown_table(formatted_result)
+        md_text = self._dicts_to_markdown_table(formatted_result, resource_type='Condition')
         return md_text
 
     async def _get_medication_info(self, input: list[Dict[str, Any]]):
@@ -224,7 +231,7 @@ class FhirClient:
         format_result = helper.format_medication_requests(response.json()) #adding medication name or reference info
         result_list = await self._get_medication_info(format_result)
         
-        md_text = self._dicts_to_markdown_table(result_list)
+        md_text = self._dicts_to_markdown_table(result_list, resource_type='MedicationRequest')
         
         return md_text
     
@@ -242,7 +249,7 @@ class FhirClient:
         format_result = helper.format_medication_dispenses(response.json()) #adding medication name or reference info
         result_list = await self._get_medication_info(format_result)
         
-        md_text = self._dicts_to_markdown_table(result_list)
+        md_text = self._dicts_to_markdown_table(result_list, resource_type='MedicationDispense')
         
         return md_text
 
@@ -260,7 +267,7 @@ class FhirClient:
         formatted_list = helper.format_medication_administrations(response.json()) #adding medication name or reference info
         result_list = await self._get_medication_info(formatted_list)
         
-        md_text = self._dicts_to_markdown_table(result_list)
+        md_text = self._dicts_to_markdown_table(result_list, resource_type='MedicationAdministration')
         
         return md_text
     
@@ -277,7 +284,7 @@ class FhirClient:
 
         response = await self.client.get("/Encounter", params=params)
         formatted_result = helper.format_encounters(response.json())
-        mk_table = self._dicts_to_markdown_table(formatted_result)
+        mk_table = self._dicts_to_markdown_table(formatted_result, resource_type='Encounter')
         return mk_table
 
 
@@ -294,7 +301,7 @@ class FhirClient:
 
         response = await self.client.get("/Procedure", params=params)
         format_result = helper.format_procedures(response.json())
-        md_text = self._dicts_to_markdown_table(format_result)
+        md_text = self._dicts_to_markdown_table(format_result, resource_type='Procedure')
         return md_text
 
 
@@ -309,7 +316,7 @@ class FhirClient:
         formatted_list = helper.format_medication_statement(response.json())
         result_list = await self._get_medication_info(formatted_list)
         
-        md_text = self._dicts_to_markdown_table(result_list)
+        md_text = self._dicts_to_markdown_table(result_list, resource_type='MedicationStatement')
         
         return md_text
     
@@ -324,7 +331,7 @@ class FhirClient:
         response = await self.client.get("/DiagnosticReport", params=params)        
         formatted_list = helper.format_diagnostic_reports(response.json())
         
-        md_text = self._dicts_to_markdown_table(formatted_list)
+        md_text = self._dicts_to_markdown_table(formatted_list, resource_type='DiagnosticReport')
         
         return md_text
     
@@ -338,7 +345,7 @@ class FhirClient:
         response = await self.client.get("/DocumentReference", params=params)        
         formatted_list = helper.format_document_references(response.json())
         
-        md_text = self._dicts_to_markdown_table(formatted_list)
+        md_text = self._dicts_to_markdown_table(formatted_list, resource_type='DocumentReference')
         
         return md_text
     
@@ -352,7 +359,7 @@ class FhirClient:
         response = await self.client.get("/AllergyIntolerance", params=params)        
         formatted_list = helper.format_allergy_intolerances(response.json())
         
-        md_text = self._dicts_to_markdown_table(formatted_list)
+        md_text = self._dicts_to_markdown_table(formatted_list, resource_type='AllergyIntolerance')
         
         return md_text
     
@@ -366,7 +373,7 @@ class FhirClient:
         response = await self.client.get("/FamilyMemberHistory", params=params)        
         formatted_list = helper.format_family_member_history(response.json())
         
-        md_text = self._dicts_to_markdown_table(formatted_list)
+        md_text = self._dicts_to_markdown_table(formatted_list, resource_type='FamilyMemberHistory')
         
         return md_text
     
@@ -381,6 +388,6 @@ class FhirClient:
         response = await self.client.get("/Immunization", params=params)        
         formatted_list = helper.format_immunizations(response.json())
         
-        md_text = self._dicts_to_markdown_table(formatted_list)
+        md_text = self._dicts_to_markdown_table(formatted_list, resource_type='Immunization')
         
         return md_text
