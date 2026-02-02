@@ -12,7 +12,7 @@ from connectors.fhir.fhir_client import FhirClient
 MCP_NAME = os.getenv("MCP_NAME", "fhir-mcp")
 MCP_IP = os.getenv("MCP_IP", "0.0.0.0")
 MCP_PORT = int(os.getenv("MCP_PORT", "8052"))
-
+MCP_TRANSPORT_METHOD = os.getenv("MCP_TRANSPORT_METHOD", "sse")  # 'sse' or 'stdio'
 #FHIR_URL = "http://127.0.0.1:8084/fhir" #For Mimic-iv demo data in localhost
 # FHIR_URL = "https://server.fire.ly" #for Firely test server
 FHIR_URL = os.getenv("FHIR_URL", "http://hapi.fhir.org/baseR4")
@@ -546,4 +546,6 @@ async def get_patient_immunizations(patient_id=None, immunization_id=None, encou
 if __name__ == "__main__":
     # TypeScript의 stdio transport 실행과 동일
     print("FHIR MCP server running on stdio", file=os.sys.stderr)
-    mcp.run(transport='sse')
+    
+    MCP_TRANSPORT_METHOD = os.getenv("MCP_TRANSPORT_METHOD", "sse")  # 'sse' or 'stdio'
+    mcp.run(transport=MCP_TRANSPORT_METHOD)
