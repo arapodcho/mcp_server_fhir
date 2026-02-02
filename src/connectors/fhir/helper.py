@@ -416,7 +416,9 @@ def format_medication_requests(bundle: Dict[str, Any]) -> list:
         if medication == 'Unknown Medication':
             medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
-            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+            medication = med.get('medicationReference', {}).get('display') or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication' 
         
         dosage_instr = med.get('dosageInstruction', [{}])[0]
         dosage_text = dosage_instr.get('text', 'No dosage instructions')
@@ -454,7 +456,9 @@ def format_medication_dispenses(bundle: Dict[str, Any]) -> list:
         if medication == 'Unknown Medication':
             medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
-            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+            medication = med.get('medicationReference', {}).get('display') or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication' 
         
         dosage_instr = med.get('dosageInstruction', [{}])[0]
         dosage_text =  dosage_instr.get('route', {}).get('coding', [{}])[0].get('code', '')
@@ -485,7 +489,9 @@ def format_medication_administrations(bundle: Dict[str, Any]) -> list:
         if medication == 'Unknown Medication':
             medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
-            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+            medication = med.get('medicationReference', {}).get('display') or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication' 
         
         dosage_instr = med.get('dosage', {})
         dosage_method = ''
@@ -550,7 +556,9 @@ def format_medication_statement(bundle: Dict[str, Any]) -> list:
         if medication == 'Unknown Medication':
             medication = med.get('medicationCodeableConcept', {}).get('coding', [{}])[0].get('code', {}) or 'Unknown Medication'
         if medication == 'Unknown Medication':
-            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication'
+            medication = med.get('medicationReference', {}).get('display') or 'Unknown Medication'
+        if medication == 'Unknown Medication':
+            medication = med.get('medicationReference', {}).get('reference') or 'Unknown Medication' 
         
         dosage = med.get('dosage', [{}])[0].get('text', '')
         
