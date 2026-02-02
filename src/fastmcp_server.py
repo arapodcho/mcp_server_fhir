@@ -434,6 +434,44 @@ async def get_patient_procedures(patient_id = None, procedure_id=None, encounter
             
     return await fhir_client.get_patient_procedures({k: v for k, v in args.items() if v is not None})
 
+async def _generate_detailed_report_by_encounter(encounter_id: str, limit: int):
+    report = [f"# Encounter Clinical Summary (ID: {encounter_id})"]
+        
+    results = await asyncio.gather(
+        fhir_client.get_patient_observations({"encounter_id": encounter_id, "category": "vital-signs"}),
+        fhir_client.get_patient_conditions({"encounter_id": encounter_id}),
+        fhir_client.get_patient_procedures({"encounter_id": encounter_id}),
+        fhir_client.get_patient_medication_requests({"encounter_id": encounter_id}),
+    )
+    
+    report.append("## Observation: vital signs (검사 내역)")
+    report.append(str(results[0]))
+    report.append("## Conditions: diagnoses (진단 내역)")
+    report.append(str(results[1]))
+    report.append("## Procedures: performed procedures (시술 내역)")
+    report.append(str(results[2]))
+    report.append("## Medication Requests: prescriptions (처방 내역)")
+    report.append(str(results[3]))
+    
+    return "\n".join(report)
+
+@mcp.tool()
+async def get_clinical_summary_by_encounter(encounter_id: str, limit: int = 1000):
+    """
+    Generates a detailed clinical summary report for a specific encounter.
+    
+    This tool aggregates key clinical data such as vital signs, diagnoses, procedures, 
+    and medication requests associated with the given encounter ID.
+    
+    Args:
+        encounter_id: The FHIR ID of the encounter to generate the report for.
+        limit: Maximum number of records to include in each section of the report.
+    """
+    await ensure_auth()
+    return await _generate_detailed_report_by_encounter(encounter_id, limit)    
+# async def _generate_summary_report_by_patient(patient_id: str, limit: int):
+#     return None
+
 @mcp.tool()
 async def get_medications_statement(patient_id=None, medication_statement_id=None):
     """
