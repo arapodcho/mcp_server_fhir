@@ -47,8 +47,10 @@ async def ensure_auth():
     pass
 
 # 3. Initialize FastMCP Server
-mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
-
+if MCP_TRANSPORT_METHOD == 'stdio':
+    mcp = FastMCP(MCP_NAME)
+else:
+    mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
 # -------------------------------------------------------------------------
 SYSTEM_RULES_TEXT = """
 [CRITICAL SYSTEM INSTRUCTIONS]
@@ -546,6 +548,5 @@ async def get_patient_immunizations(patient_id=None, immunization_id=None, encou
 if __name__ == "__main__":
     # TypeScript의 stdio transport 실행과 동일
     print("FHIR MCP server running on stdio", file=os.sys.stderr)
-    
-    MCP_TRANSPORT_METHOD = os.getenv("MCP_TRANSPORT_METHOD", "sse")  # 'sse' or 'stdio'
+
     mcp.run(transport=MCP_TRANSPORT_METHOD)
