@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from typing import Annotated, Literal, List
 from typing_extensions import TypedDict
 
@@ -24,10 +25,25 @@ MCP_TRANSPORT_METHOD = os.getenv("MCP_TRANSPORT_METHOD", "sse")  # 'sse' or 'std
 MCP_NAME = os.getenv("MCP_NAME", "fhir-mcp")
 MCP_IP = os.getenv("MCP_IP", "0.0.0.0")
 MCP_PORT = int(os.getenv("MCP_PORT", "8052"))
-mcp_connection = ''
+mcp_set_dict = {}
 if MCP_TRANSPORT_METHOD != 'stdio':
     mcp_connection = f"http://{MCP_IP}:{MCP_PORT}/{MCP_TRANSPORT_METHOD}"
 
+    mcp_set_dict = {
+            str(MCP_NAME): {
+                "url": str(mcp_connection),
+                "transport": str(MCP_TRANSPORT_METHOD),
+            }
+        }
+else:
+    # stdio 모드인 경우, 별도 설정 없이 subprocess에서 자동 연결됨
+    mcp_set_dict = {
+            str(MCP_NAME): {
+                "transport": "stdio",
+                "command": sys.executable,
+                "args": [os.path.join(os.path.dirname(__file__), "fastmcp_server.py")],
+            }
+        }
 # =============================================================================
 # 1. Helper Functions & State Definition
 # =============================================================================
@@ -57,12 +73,7 @@ async def run_chat_app():
     # 여기서는 import 했다고 가정하거나, 기존 코드를 그대로 사용합니다.
     from langchain_mcp_adapters.client import MultiServerMCPClient # (예시) 파일 분리 권장
 
-    client = MultiServerMCPClient({
-        str(MCP_NAME): {
-            "url": str(mcp_connection),
-            "transport": str(MCP_TRANSPORT_METHOD),
-        }
-    })
+    client = MultiServerMCPClient(mcp_set_dict)
     print("🔌 Connecting to MCP Server...")
 
     # ★ 핵심: 세션 컨텍스트 안에서 챗봇 루프를 실행해야 함 ★
@@ -174,7 +185,14 @@ async def run_chat_app():
                         if key == "agent":
                             msg = value["messages"][-1]
                             if msg.content:
-                                print(f"🤖 AI: {msg.content}")
+                                content = msg.content
+                                if isinstance(content, list):
+                                    text_parts = [part.get("text", "") for part in content if isinstance(part, dict)]
+                                    print(f"🤖 AI: {''.join(text_parts) if text_parts else content}")
+                                elif isinstance(content, dict):
+                                    print(f"🤖 AI: {content.get('text', content)}")
+                                else:
+                                    print(f"🤖 AI: {content}")
                         # tool 출력은 위 node에서 print 찍음
             
             except KeyboardInterrupt:
