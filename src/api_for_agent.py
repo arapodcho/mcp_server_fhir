@@ -1,13 +1,20 @@
 # server.py
 import asyncio
 from contextlib import asynccontextmanager
+from json import load
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 # 앞서 저장한 봇 클래스 가져오기
 from agent_for_mcp_fhir import ClinicalChatbot 
-
+API_IP = os.getenv("API_IP", "0.0.0.0")
+API_PORT = int(os.getenv("API_PORT", "8052"))
+        
 # =============================================================================
 # 1. 전역 변수 및 Lifespan (서버 수명 주기 관리)
 # =============================================================================
@@ -88,4 +95,4 @@ async def chat_endpoint(request: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     # uvicorn server:app --reload 와 동일
-    uvicorn.run("api_for_agent:app", host="0.0.0.0", port=8053, reload=True)
+    uvicorn.run("api_for_agent:app", host=API_IP, port=API_PORT, reload=True)

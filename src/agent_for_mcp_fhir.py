@@ -7,7 +7,7 @@ from typing_extensions import TypedDict
 
 # LangChain / LangGraph Imports
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage
+from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage, SystemMessage
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
@@ -94,6 +94,16 @@ class ClinicalChatbot:
         # Start MCP Session
         async with client.session(self.mcp_name) as mcp:
             try:
+                formatting_instruction = """
+            당신은 전문 의료 데이터 분석 AI입니다.
+            FHIR 데이터를 조회하여 사용자에게 **임상 요약 보고서**를 제공합니다.
+
+            [출력 포맷 규칙 - 엄격 준수]
+            1. 모든 데이터 리스트는 반드시 **Markdown Table(표)** 형식을 사용하세요.
+            2. 텍스트 나열(List)이나 글머리 기호 사용을 금지합니다.
+            3. 데이터가 없을 경우, 해당 섹션 아래에 "일치하는 기록이 없습니다."라고 적으세요.
+            4. 각 섹션의 제목은 `**Bold**`로 처리하세요.
+            """
                 # 1. Load Tools
                 mcp_tools = await mcp.list_tools()
                 formatted_tools = mcp_tools_to_schema(mcp_tools)
@@ -106,10 +116,17 @@ class ClinicalChatbot:
                     google_api_key=self.api_key
                 )
                 llm_with_tools = llm.bind_tools(formatted_tools)
-
+                system_msg = SystemMessage(content=formatting_instruction)
                 # 3. Define Graph Nodes (Closure to access 'mcp' session)
                 def chatbot_node(state: AgentState):
-                    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+                    
+                    messages = state["messages"]
+                
+                    # 시스템 메시지가 맨 앞에 없으면 추가 (가장 강력한 지침으로 작용)
+                    if not messages or not isinstance(messages[0], SystemMessage):
+                        messages = [system_msg] + messages
+                    
+                    return {"messages": [llm_with_tools.invoke(messages)]}
 
                 async def tool_node(state: AgentState):
                     last_message = state["messages"][-1]
