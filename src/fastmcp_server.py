@@ -127,7 +127,10 @@ async def aaa_clinical_system_rules():
 async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None):
     """
     Search for a **Patient (환자)** to retrieve their unique FHIR `patient_id`.
-    Requires 'patient_id' or 'last_name'.
+    Requires 'patient_id' or 'last_name'.    
+    If the user provides a full Korean name (e.g., "김철수"), **you MUST split it**:
+    - **last_name**: The Family Name / 성 (e.g., "김" from "김철수")
+    - **first_name**: The Given Name / 이름 (e.g., "철수" from "김철수")
     Args:
         birth_date: YYYY-MM-DD. Prefixes: 'ge', 'le', 'eq'.
         gender: "male", "female", "other", "unknown".
