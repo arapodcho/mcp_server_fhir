@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  mcp_server_fhir:
+    image: mcp_server_fhir:latest
+    container_name: mcp_server_fhir_app
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8053"
+    volumes:
+      - ./src/.env_example:/app/.env # Mount the example .env to the container's .env for development. 
+                                     # For production, ensure your actual .env is securely handled.

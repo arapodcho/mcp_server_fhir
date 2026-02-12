@@ -8,8 +8,10 @@ python-dotenv>=1.0.0
 # Agent runtime (LangGraph + Gemini)
 # NOTE: This repo uses LangChain 0.3.x (langchain-core < 1.0). Keep LangGraph/GenAI
 # integrations in compatible major versions.
-langgraph>=0.3.0,<0.4
-langchain-google-genai>=2.1.0,<3
+langgraph>=0.3.0
+langchain-google-genai>=2.1.0
 fastapi 
 uvicorn 
 pydantic
+langchain_mcp_adapters
+langchain-core
