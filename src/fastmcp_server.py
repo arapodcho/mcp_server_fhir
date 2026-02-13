@@ -25,6 +25,12 @@ FHIR_RESOURCE_VALUE = os.getenv("FHIR_RESOURCE_VALUE", None)
 # TS의 Server 클래스와 유사하게 상태를 관리합니다.
 fhir_client = FhirClient(FHIR_URL, FHIR_GRANT_TYPE, FHIR_TOKEN_ENDPOINT, FHIR_CLIENT_ID, FHIR_CLIENT_SECRET, FHIR_RESOURCE_VALUE)
 
+# 3. Initialize FastMCP Server
+if MCP_TRANSPORT_METHOD == 'stdio':
+    mcp = FastMCP(MCP_NAME)
+else:
+    mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
+    
 # Auth 처리를 위한 간단한 래퍼 (TS 로직 모방)
 # auth_handler = Auth(auth_config)
 auth_initialized = False
@@ -40,17 +46,58 @@ def _is_valid_yyyy_mm_dd(value: str) -> bool:
     except Exception:
         return False
 
+@mcp.tool()
+async def configure_fhir_server(
+    fhir_url: str,
+    grant_type: str = "Client_Credentials",
+    token_endpoint: Optional[str] = None,
+    client_id: Optional[str] = None,
+    client_secret: Optional[str] = None,
+    resource_value: Optional[str] = None
+):
+    """
+    Update FHIR server configuration dynamically.
+    Re-initializes the FHIR client with new connection details.
+    
+    Args:
+        fhir_url: Base URL of the FHIR server
+        grant_type: OAuth2 grant type (default: "Client_Credentials")
+        token_endpoint: Token endpoint URL for OAuth2
+        client_id: OAuth2 Client ID
+        client_secret: OAuth2 Client Secret
+        resource_value: Resource identifier for token request
+    """
+    global fhir_client
+    
+    # Update global variables for reference (optional, but good for consistency)
+    global FHIR_URL, FHIR_GRANT_TYPE, FHIR_TOKEN_ENDPOINT
+    global FHIR_CLIENT_ID, FHIR_CLIENT_SECRET, FHIR_RESOURCE_VALUE
+    
+    FHIR_URL = fhir_url
+    FHIR_GRANT_TYPE = grant_type
+    FHIR_TOKEN_ENDPOINT = token_endpoint
+    FHIR_CLIENT_ID = client_id
+    FHIR_CLIENT_SECRET = client_secret
+    FHIR_RESOURCE_VALUE = resource_value
+
+    # Re-initialize the client
+    fhir_client = FhirClient(
+        FHIR_URL, 
+        FHIR_GRANT_TYPE, 
+        FHIR_TOKEN_ENDPOINT, 
+        FHIR_CLIENT_ID, 
+        FHIR_CLIENT_SECRET, 
+        FHIR_RESOURCE_VALUE
+    )
+    
+    return f"Successfully updated FHIR client configuration to {fhir_url}"
+
 async def ensure_auth():
     global auth_initialized
     if not auth_initialized:
         auth_initialized = True
     pass
 
-# 3. Initialize FastMCP Server
-if MCP_TRANSPORT_METHOD == 'stdio':
-    mcp = FastMCP(MCP_NAME)
-else:
-    mcp = FastMCP(MCP_NAME, host=MCP_IP, port=MCP_PORT)
 # -------------------------------------------------------------------------
 SYSTEM_RULES_TEXT = """
 [CRITICAL SYSTEM INSTRUCTIONS]
@@ -132,6 +179,8 @@ async def aaa_clinical_system_rules():
     """
     
     return SYSTEM_RULES_TEXT
+
+
 
 @mcp.tool()
 async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None, last_updated=None, limit=20):
