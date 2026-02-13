@@ -60,11 +60,17 @@ class FhirClient:
         if args.get('id'):
             params['_id'] = args['id']
         else:
+            if args.get('_sort'):
+                if args['_sort'] == "-_lastUpdated":
+                    params['_sort'] = '-_lastUpdated'
+                    if args.get('_count'): params['_count'] = args['_count']
+            
             if args.get('lastName'): params['family'] = args['lastName']
             if args.get('firstName'): params['given'] = args['firstName']        
             if args.get('birthDate'): params['birthdate'] = args['birthDate']
-            # if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
-
+            if args.get('gender'): params['gender'] = args['gender'] #it is not work in fhir interface
+            if args.get('lastUpdated'): params['_lastUpdated'] = args['lastUpdated']
+            
         response = await self.client.get("/Patient", params=params)
         formatted_result = helper.format_patient_search_results(response.json(), args)
         mk_table = self._dicts_to_markdown_table(formatted_result, resource_type='Patient')

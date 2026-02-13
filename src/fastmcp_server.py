@@ -71,7 +71,12 @@ You are a clinical AI assistant. Apply these rules to ALL tools:
    - Use strict Enum values provided in tool arguments.
    
 3. [Formatting]
-   - Dates: YYYY-MM-DD format.
+   - Dates: YYYY-MM-DD format. Use these prefixes for range searches:
+    - `eq`: Equal (Default).
+    - `gt`: Greater Than (>) - "After".
+    - `ge`: Greater or Equal (>=) - "On or After".
+    - `lt`: Less Than (<) - "Before".
+    - `le`: Less or Equal (<=) - "On or Before".
 
 4. [Data Presentation] 
    - **Comprehensive Display:** When a tool returns a data table, please present it in its entirety.
@@ -114,6 +119,11 @@ async def aaa_clinical_system_rules():
        
     3. [Formatting]
        - Dates: YYYY-MM-DD format.
+        - `eq`: Equal (Default).
+        - `gt`: Greater Than (>) - "After".
+        - `ge`: Greater or Equal (>=) - "On or After".
+        - `lt`: Less Than (<) - "Before".
+        - `le`: Less or Equal (<=) - "On or Before".
        
     4. [Data Presentation] 
         - **Comprehensive Display:** When a tool returns a data table, please present it in its entirety.
@@ -124,32 +134,38 @@ async def aaa_clinical_system_rules():
     return SYSTEM_RULES_TEXT
 
 @mcp.tool()
-async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None):
+async def find_patient(last_name=None, first_name=None, patient_id=None, birth_date=None, gender=None, last_updated=None, limit=20):
     """
-    Search for a **Patient (환자)** to retrieve their unique FHIR `patient_id`.
-    Requires 'patient_id' or 'last_name'.    
-    If the user provides a full Korean name (e.g., "김철수"), **you MUST split it**:
-    - **last_name**: The Family Name / 성 (e.g., "김" from "김철수")
-    - **first_name**: The Given Name / 이름 (e.g., "철수" from "김철수")
-    Args:
-        birth_date: YYYY-MM-DD. Prefixes: 'ge', 'le', 'eq'.
-        gender: "male", "female", "other", "unknown".
-    """
-    await ensure_auth()
-    # 최소한의 검색 조건이 있는지 확인 (ID 혹은 성 중 하나는 있어야 함)
-    if not patient_id and not last_name:
-        return "Error: You must provide either 'patient_id' or 'last_name' to search for a patient."
+    Search for **Patients (환자)** using various filters.
+    You can search by Name/ID, OR by demographics (Gender, BirthDate), OR just list recently updated patients.
     
+    [Korean Name Handling]
+    - If input is full name "김철수", split into last_name="김", first_name="철수".
+    
+    [Args]
+    - patient_id: Unique FHIR ID.
+    - last_name: Family Name (성).
+    - first_name: Given Name (이름).
+    - birth_date: YYYY-MM-DD.
+    - gender: "male", "female", "other", "unknown".
+    - last_updated: Filter by modified date (YYYY-MM-DD). (e.g., "2024-01-01" will search for records updated ON or AFTER this date).
+    - limit: Maximum number of patients to return (Default: 20).
+    """
+    # 1. 인증 확인
+    await ensure_auth()
+
     if patient_id is not None:
         args = {"id": patient_id}
     else:    
         # 조립 전 기본 검증 및 정제
         args = {
             "lastName": last_name or "",
-            "firstName": first_name or "",         
+            "firstName": first_name or "",     
+            "_sort": "-_lastUpdated",
+            "_count": limit    
         }
         # birthDate는 YYYY-MM-DD 형식일 때만 포함
-        if birth_date and _is_valid_yyyy_mm_dd(birth_date):
+        if birth_date: # and _is_valid_yyyy_mm_dd(birth_date):
             args["birthDate"] = birth_date
         else:
             args["birthDate"] = None
@@ -159,13 +175,20 @@ async def find_patient(last_name=None, first_name=None, patient_id=None, birth_d
         if gender and gender in allowed_genders:
             args["gender"] = gender
         else:
-            args["gender"] = None
-        
-    # 빈 문자열 제거
-    cleaned_args = {k: v for k, v in args.items() if v != ''}
+            args["gender"] = None    
+            
+        # [핵심] 최근 수정일 필터 처리
+        if last_updated:
+            # 사용자가 날짜만 입력(예: "2025-01-01")하면, FHIR의 'ge'(Greater or Equal)를 붙여줍니다.
+            # 만약 이미 'gt', 'lt' 같은 접두어가 있다면 그대로 둡니다.
+            if last_updated[0].isdigit():
+                args["lastUpdated"] = f"ge{last_updated}"
+            else:
+                args["lastUpdated"] = last_updated
+        # 빈 문자열 제거
+        cleaned_args = {k: v for k, v in args.items() if v != ''}
     
     return await fhir_client.find_patient(cleaned_args)
-
 
 @mcp.tool()
 async def get_patient_encounters(patient_id=None, encounter_id=None, dateFrom = None, dateTo = None, status = None):

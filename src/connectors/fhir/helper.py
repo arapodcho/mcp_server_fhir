@@ -135,19 +135,24 @@ def format_patient_search_results(bundle: Dict[str, Any], params: Optional[Dict[
             if params.get('firstName'):
                 if given_name.lower() != params['firstName'].lower():
                     continue
-            if params.get('gender') and params.get('gender') != 'unknown':
-                if patient.get('gender').lower() != params['gender'].lower():
-                    continue
+            # if params.get('gender') and params.get('gender') != 'unknown' and patient.get('gender'):
+            #     if patient.get('gender').lower() != params['gender'].lower():
+            #         continue
+        lastUpdated = ''
+        lastUpdated_str = patient.get('meta', {}).get('lastUpdated', '')
+        if lastUpdated_str != '':
+            lastUpdated = convert_fhir_to_local_str(lastUpdated_str)
         
         reference_result = extract_ref_display(patient)        
         
         current_result = {}
         current_result['patient_id'] = patient.get('id')
         current_result['full_name'] = f"{name.get('family')}, {given_name}"
-        current_result['date_of_birth'] = patient.get('birthDate')
-        current_result['gender'] = patient.get('gender')
+        current_result['date_of_birth'] = patient.get('birthDate', 'Unknown')
+        current_result['gender'] = patient.get('gender', 'Unknown')
         current_result['address'] = format_address(address)
         current_result['phone'] = phone
+        current_result['last_updated'] = lastUpdated
         apply_reference_info(current_result, reference_result)
         results.append(current_result)
 
